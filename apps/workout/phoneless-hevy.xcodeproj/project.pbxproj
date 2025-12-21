@@ -1,0 +1,701 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A30CACFD2EA9447400670131 /* phoneless-hevy Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = A30CACFC2EA9447400670131 /* phoneless-hevy Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A30CACFE2EA9447400670131 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A30CACF02EA9447300670131 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A30CACFB2EA9447400670131;
+			remoteInfo = "phoneless-hevy Watch App";
+		};
+		A30CAD0C2EA9447500670131 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A30CACF02EA9447300670131 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A30CACFB2EA9447400670131;
+			remoteInfo = "phoneless-hevy Watch App";
+		};
+		A30CAD162EA9447500670131 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A30CACF02EA9447300670131 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A30CACFB2EA9447400670131;
+			remoteInfo = "phoneless-hevy Watch App";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A30CAD222EA9447500670131 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				A30CACFD2EA9447400670131 /* phoneless-hevy Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		A30CACF62EA9447400670131 /* phoneless-hevy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "phoneless-hevy.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A30CACFC2EA9447400670131 /* phoneless-hevy Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "phoneless-hevy Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A30CAD0B2EA9447500670131 /* phoneless-hevy Watch AppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "phoneless-hevy Watch AppTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A30CAD152EA9447500670131 /* phoneless-hevy Watch AppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "phoneless-hevy Watch AppUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		A30CAD002EA9447400670131 /* phoneless-hevy Watch App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "phoneless-hevy Watch App";
+			sourceTree = "<group>";
+		};
+		A30CAD0E2EA9447500670131 /* phoneless-hevy Watch AppTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "phoneless-hevy Watch AppTests";
+			sourceTree = "<group>";
+		};
+		A30CAD182EA9447500670131 /* phoneless-hevy Watch AppUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "phoneless-hevy Watch AppUITests";
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A30CACF92EA9447400670131 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A30CAD082EA9447500670131 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A30CAD122EA9447500670131 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A30CACEF2EA9447300670131 = {
+			isa = PBXGroup;
+			children = (
+				A30CAD002EA9447400670131 /* phoneless-hevy Watch App */,
+				A30CAD0E2EA9447500670131 /* phoneless-hevy Watch AppTests */,
+				A30CAD182EA9447500670131 /* phoneless-hevy Watch AppUITests */,
+				A30CACF72EA9447400670131 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A30CACF72EA9447400670131 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A30CACF62EA9447400670131 /* phoneless-hevy.app */,
+				A30CACFC2EA9447400670131 /* phoneless-hevy Watch App.app */,
+				A30CAD0B2EA9447500670131 /* phoneless-hevy Watch AppTests.xctest */,
+				A30CAD152EA9447500670131 /* phoneless-hevy Watch AppUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A30CACF52EA9447300670131 /* phoneless-hevy */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A30CAD232EA9447500670131 /* Build configuration list for PBXNativeTarget "phoneless-hevy" */;
+			buildPhases = (
+				A30CACF42EA9447300670131 /* Resources */,
+				A30CAD222EA9447500670131 /* Embed Watch Content */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A30CACFF2EA9447400670131 /* PBXTargetDependency */,
+			);
+			name = "phoneless-hevy";
+			packageProductDependencies = (
+			);
+			productName = "phoneless-hevy";
+			productReference = A30CACF62EA9447400670131 /* phoneless-hevy.app */;
+			productType = "com.apple.product-type.application.watchapp2-container";
+		};
+		A30CACFB2EA9447400670131 /* phoneless-hevy Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A30CAD1F2EA9447500670131 /* Build configuration list for PBXNativeTarget "phoneless-hevy Watch App" */;
+			buildPhases = (
+				A30CACF82EA9447400670131 /* Sources */,
+				A30CACF92EA9447400670131 /* Frameworks */,
+				A30CACFA2EA9447400670131 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A30CAD002EA9447400670131 /* phoneless-hevy Watch App */,
+			);
+			name = "phoneless-hevy Watch App";
+			packageProductDependencies = (
+			);
+			productName = "phoneless-hevy Watch App";
+			productReference = A30CACFC2EA9447400670131 /* phoneless-hevy Watch App.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A30CAD0A2EA9447500670131 /* phoneless-hevy Watch AppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A30CAD262EA9447500670131 /* Build configuration list for PBXNativeTarget "phoneless-hevy Watch AppTests" */;
+			buildPhases = (
+				A30CAD072EA9447500670131 /* Sources */,
+				A30CAD082EA9447500670131 /* Frameworks */,
+				A30CAD092EA9447500670131 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A30CAD0D2EA9447500670131 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A30CAD0E2EA9447500670131 /* phoneless-hevy Watch AppTests */,
+			);
+			name = "phoneless-hevy Watch AppTests";
+			packageProductDependencies = (
+			);
+			productName = "phoneless-hevy Watch AppTests";
+			productReference = A30CAD0B2EA9447500670131 /* phoneless-hevy Watch AppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		A30CAD142EA9447500670131 /* phoneless-hevy Watch AppUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A30CAD292EA9447500670131 /* Build configuration list for PBXNativeTarget "phoneless-hevy Watch AppUITests" */;
+			buildPhases = (
+				A30CAD112EA9447500670131 /* Sources */,
+				A30CAD122EA9447500670131 /* Frameworks */,
+				A30CAD132EA9447500670131 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A30CAD172EA9447500670131 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A30CAD182EA9447500670131 /* phoneless-hevy Watch AppUITests */,
+			);
+			name = "phoneless-hevy Watch AppUITests";
+			packageProductDependencies = (
+			);
+			productName = "phoneless-hevy Watch AppUITests";
+			productReference = A30CAD152EA9447500670131 /* phoneless-hevy Watch AppUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A30CACF02EA9447300670131 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2600;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					A30CACF52EA9447300670131 = {
+						CreatedOnToolsVersion = 26.0.1;
+					};
+					A30CACFB2EA9447400670131 = {
+						CreatedOnToolsVersion = 26.0.1;
+					};
+					A30CAD0A2EA9447500670131 = {
+						CreatedOnToolsVersion = 26.0.1;
+						TestTargetID = A30CACFB2EA9447400670131;
+					};
+					A30CAD142EA9447500670131 = {
+						CreatedOnToolsVersion = 26.0.1;
+						TestTargetID = A30CACFB2EA9447400670131;
+					};
+				};
+			};
+			buildConfigurationList = A30CACF32EA9447300670131 /* Build configuration list for PBXProject "phoneless-hevy" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A30CACEF2EA9447300670131;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = A30CACF72EA9447400670131 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A30CACF52EA9447300670131 /* phoneless-hevy */,
+				A30CACFB2EA9447400670131 /* phoneless-hevy Watch App */,
+				A30CAD0A2EA9447500670131 /* phoneless-hevy Watch AppTests */,
+				A30CAD142EA9447500670131 /* phoneless-hevy Watch AppUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A30CACF42EA9447300670131 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A30CACFA2EA9447400670131 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A30CAD092EA9447500670131 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A30CAD132EA9447500670131 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A30CACF82EA9447400670131 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A30CAD072EA9447500670131 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A30CAD112EA9447500670131 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A30CACFF2EA9447400670131 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A30CACFB2EA9447400670131 /* phoneless-hevy Watch App */;
+			targetProxy = A30CACFE2EA9447400670131 /* PBXContainerItemProxy */;
+		};
+		A30CAD0D2EA9447500670131 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A30CACFB2EA9447400670131 /* phoneless-hevy Watch App */;
+			targetProxy = A30CAD0C2EA9447500670131 /* PBXContainerItemProxy */;
+		};
+		A30CAD172EA9447500670131 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A30CACFB2EA9447400670131 /* phoneless-hevy Watch App */;
+			targetProxy = A30CAD162EA9447500670131 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		A30CAD1D2EA9447500670131 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = F5DJWB4CCV;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A30CAD1E2EA9447500670131 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = F5DJWB4CCV;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		A30CAD202EA9447500670131 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "phoneless-hevy Watch App/phoneless-hevy Watch App.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = F5DJWB4CCV;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "phoneless-hevy";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKWatchOnly = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "differentai.phoneless-hevy.watchkitapp";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		A30CAD212EA9447500670131 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "phoneless-hevy Watch App/phoneless-hevy Watch App.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = F5DJWB4CCV;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "phoneless-hevy";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKWatchOnly = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "differentai.phoneless-hevy.watchkitapp";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+		A30CAD242EA9447500670131 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = F5DJWB4CCV;
+				INFOPLIST_KEY_CFBundleDisplayName = "phoneless-hevy";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "differentai.phoneless-hevy";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		A30CAD252EA9447500670131 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = F5DJWB4CCV;
+				INFOPLIST_KEY_CFBundleDisplayName = "phoneless-hevy";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "differentai.phoneless-hevy";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+		A30CAD272EA9447500670131 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = F5DJWB4CCV;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "differentai.phoneless-hevy-Watch-AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/phoneless-hevy Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/phoneless-hevy Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		A30CAD282EA9447500670131 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = F5DJWB4CCV;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "differentai.phoneless-hevy-Watch-AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/phoneless-hevy Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/phoneless-hevy Watch App";
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+		A30CAD2A2EA9447500670131 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = F5DJWB4CCV;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "differentai.phoneless-hevy-Watch-AppUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_TARGET_NAME = "phoneless-hevy Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		A30CAD2B2EA9447500670131 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = F5DJWB4CCV;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "differentai.phoneless-hevy-Watch-AppUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_TARGET_NAME = "phoneless-hevy Watch App";
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A30CACF32EA9447300670131 /* Build configuration list for PBXProject "phoneless-hevy" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A30CAD1D2EA9447500670131 /* Debug */,
+				A30CAD1E2EA9447500670131 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A30CAD1F2EA9447500670131 /* Build configuration list for PBXNativeTarget "phoneless-hevy Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A30CAD202EA9447500670131 /* Debug */,
+				A30CAD212EA9447500670131 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A30CAD232EA9447500670131 /* Build configuration list for PBXNativeTarget "phoneless-hevy" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A30CAD242EA9447500670131 /* Debug */,
+				A30CAD252EA9447500670131 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A30CAD262EA9447500670131 /* Build configuration list for PBXNativeTarget "phoneless-hevy Watch AppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A30CAD272EA9447500670131 /* Debug */,
+				A30CAD282EA9447500670131 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A30CAD292EA9447500670131 /* Build configuration list for PBXNativeTarget "phoneless-hevy Watch AppUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A30CAD2A2EA9447500670131 /* Debug */,
+				A30CAD2B2EA9447500670131 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A30CACF02EA9447300670131 /* Project object */;
+}

@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "photo-to-splat": "./apps/photo-to-splat/start.sh",
+    "build:portfolio": "pnpm --filter @cool-website/portfolio build",
+    "build:blog": "pnpm --filter @cool-website/blog build"
+  }
+}

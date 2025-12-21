@@ -1,0 +1,425 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  :root {
+    /* Industrial paper colors */
+    --bg-paper: #E6F2EF; /* Desaturated minty */
+    --bg-paper-warm: #F5F2ED; /* Warm cream */
+    --ink-black: #050505;
+  }
+}
+
+/* ============================================
+   INDUSTRIAL AESTHETIC - NYC LABEL INSPIRED
+   ============================================ */
+
+/* --- TEXTURE LAYERS --- */
+
+/* Paper texture - fine grain (subtle) */
+.paper-texture {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 40;
+  opacity: 0.12;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+/* Black toner specks (subtle) */
+.speckles-black {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 50;
+  mix-blend-mode: multiply; 
+  opacity: 0.18; 
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='speckleBlack'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 45 -30' result='dots'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23speckleBlack)'/%3E%3C/svg%3E");
+}
+
+/* White dust specks - visible on dark areas */
+.speckles-white {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 55; 
+  mix-blend-mode: screen;
+  opacity: 0.4; 
+  filter: url(#whiteDots); 
+}
+
+/* --- INK BLEED CLASSES --- */
+.ink-bleed {
+  filter: url(#ink-bleed);
+}
+
+.ink-heavy {
+  filter: url(#ink-heavy);
+}
+
+/* --- INDUSTRIAL BORDERS --- */
+.border-thick {
+  border: 3px solid var(--ink-black, #050505);
+}
+
+.border-r-thick {
+  border-right: 3px solid var(--ink-black, #050505);
+}
+
+.border-b-thick {
+  border-bottom: 3px solid var(--ink-black, #050505);
+}
+
+.border-t-thick {
+  border-top: 3px solid var(--ink-black, #050505);
+}
+
+.border-l-thick {
+  border-left: 3px solid var(--ink-black, #050505);
+}
+
+/* --- DOTTED LINE SEPARATOR --- */
+.dotted-line {
+  background-image: linear-gradient(to right, black 50%, rgba(255,255,255,0) 0%);
+  background-position: bottom;
+  background-size: 8px 3px;
+  background-repeat: repeat-x;
+  height: 3px;
+  width: 100%;
+}
+
+/* --- PIXEL FONT --- */
+.font-pixel {
+  font-family: 'VT323', monospace;
+  letter-spacing: 0.1em;
+}
+
+/* --- TIGHT TRACKING --- */
+.tight-tracking {
+  letter-spacing: -0.04em;
+}
+
+/* --- INDUSTRIAL LABEL CONTAINER --- */
+.industrial-label {
+  background-color: var(--bg-paper);
+  color: var(--ink-black);
+  filter: contrast(110%) brightness(100%);
+  transform: rotate(-0.5deg);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Warm paper variant */
+.industrial-label-warm {
+  background-color: var(--bg-paper-warm);
+}
+
+/* --- INDUSTRIAL HEADER BLOCK --- */
+.industrial-header {
+  @apply bg-black text-white p-5 flex justify-between items-end relative;
+  filter: url(#ink-heavy);
+}
+
+.industrial-header h1 {
+  @apply mix-blend-screen;
+}
+
+@layer components {
+  /* Headlines: Inter Black, tight tracking */
+  .headline-sans {
+    @apply font-sans font-black leading-headline tracking-tight-headline;
+  }
+
+  /* Subheads: Libre Baskerville */
+  .serif-subhead {
+    @apply font-serif tracking-tight-subhead leading-subhead;
+  }
+
+  /* Body text: Libre Baskerville */
+  .serif-body {
+    @apply font-serif tracking-tight-body leading-relaxed;
+  }
+
+  /* Mono text: IBM Plex Mono */
+  .type-mono {
+    @apply font-mono tracking-tight-body;
+  }
+
+  /* Page container */
+  .page {
+    @apply bg-paper w-full max-w-[800px] mx-auto px-8 py-10 md:px-12 min-h-screen;
+    position: relative;
+    overflow: hidden;
+
+    /* Keep the old vibe: subtle frame */
+    border: 1px solid rgba(0, 0, 0, 0.12);
+  }
+
+  /* Content should sit above the texture layers */
+  .page-inner {
+    position: relative;
+    z-index: 10;
+  }
+
+  /* Photocopy overlay (default off) */
+  .photocopy-root {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 20;
+  }
+
+  .photocopy-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .photocopy-three-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    mix-blend-mode: multiply;
+  }
+
+  .photocopy-hud {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 30;
+    pointer-events: none;
+    background: rgba(255, 255, 255, 0.75);
+    border: 1px solid rgba(0, 0, 0, 0.14);
+    padding: 10px 12px;
+    max-width: 250px;
+    backdrop-filter: blur(6px);
+  }
+
+  .photocopy-hud-title {
+    @apply font-mono text-[10px] uppercase tracking-widest;
+    color: rgba(0, 0, 0, 0.7);
+    margin-bottom: 6px;
+  }
+
+  .photocopy-hud-mode {
+    @apply font-mono text-[11px];
+    color: rgba(0, 0, 0, 0.75);
+    margin-bottom: 4px;
+  }
+
+  .photocopy-hud-help {
+    @apply font-mono text-[10px];
+    color: rgba(0, 0, 0, 0.5);
+  }
+
+  /* CSS overlay modes */
+  .photocopy-overlay[data-mode="css-grain"] {
+    opacity: 0.14;
+    mix-blend-mode: multiply;
+    filter: contrast(1.05);
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.35' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)' opacity='0.55'/%3E%3C/svg%3E");
+  }
+
+  .photocopy-overlay[data-mode="css-speckles"] {
+    opacity: 0.09;
+    mix-blend-mode: multiply;
+    filter: contrast(1.05);
+    background-size: 520px 520px;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='speckle'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.7' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 35 -20' result='dots'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23speckle)'/%3E%3C/svg%3E");
+  }
+
+  .photocopy-overlay[data-mode="css-photocopy"] {
+    opacity: 0.12;
+    mix-blend-mode: multiply;
+    filter: contrast(1.08);
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.24),
+        rgba(0, 0, 0, 0.24) 1px,
+        rgba(255, 255, 255, 0) 1px,
+        rgba(255, 255, 255, 0) 6px
+      ),
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.35' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)' opacity='0.55'/%3E%3C/svg%3E");
+  }
+
+  /* Default: no photocopy noise */
+
+  /* Small "stamp" / label accent */
+  .label-stamp {
+    @apply font-mono text-[10px] uppercase tracking-widest;
+    color: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    padding: 0.3rem 0.45rem;
+    line-height: 1;
+  }
+
+  .label-dots {
+    display: inline-flex;
+    gap: 0.35rem;
+    align-items: center;
+  }
+
+  .label-dots span {
+    width: 4px;
+    height: 4px;
+    border-radius: 9999px;
+    background: rgba(0, 0, 0, 0.35);
+  }
+
+  /* Separators */
+  .separator-line {
+    @apply h-px bg-black w-full my-4;
+  }
+
+  .thick-separator {
+    @apply h-0.5 bg-black w-full my-6;
+  }
+
+  .separator-3px {
+    @apply h-[3px] bg-black w-full my-5;
+  }
+
+  /* Meta text */
+  .meta-text {
+    @apply font-mono text-[10px] uppercase tracking-widest text-gray-600;
+  }
+
+  /* Tags */
+  .tag {
+    @apply font-mono text-[9px] bg-black/5 px-2 py-1 uppercase tracking-wide text-gray-600 inline-block;
+  }
+
+  /* Prose styling for article content */
+  .prose {
+    @apply font-serif text-lg leading-relaxed text-gray-800;
+  }
+
+  .prose p {
+    @apply mb-6;
+  }
+
+  .prose h2 {
+    @apply font-sans font-black text-2xl md:text-3xl tracking-tight-subhead mt-12 mb-6 leading-tight;
+  }
+
+  .prose h3 {
+    @apply font-sans font-black text-xl tracking-tight-body mt-10 mb-4 leading-snug;
+  }
+
+  .prose ul, .prose ol {
+    @apply mb-6 pl-6;
+  }
+
+  .prose li {
+    @apply mb-3;
+  }
+
+  .prose blockquote {
+    @apply relative my-16 mx-0 md:-mx-8 py-10 px-8 md:px-12 border-none;
+    background: linear-gradient(135deg, rgba(0,0,0,0.015) 0%, transparent 70%);
+  }
+
+  /* Left accent bar */
+  .prose blockquote::before {
+    content: '';
+    @apply absolute left-0 top-6 bottom-6 w-[3px] bg-black;
+  }
+
+  /* Large decorative quote mark */
+  .prose blockquote::after {
+    content: '"';
+    position: absolute;
+    top: -0.1em;
+    left: 0.5rem;
+    font-size: clamp(100px, 18vw, 180px);
+    line-height: 1;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-weight: 400;
+    color: rgba(0, 0, 0, 0.04);
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .prose blockquote p {
+    @apply relative z-10 text-base leading-relaxed text-gray-800 mb-4;
+  }
+
+  .prose blockquote p:last-child {
+    @apply mb-0;
+  }
+
+  /* The actual quote: em > strong or strong > em */
+  .prose blockquote em strong,
+  .prose blockquote strong em {
+    @apply font-normal not-italic block text-[1.25rem] md:text-[1.5rem] leading-[1.55] mb-5;
+    font-family: 'Libre Baskerville', Georgia, serif;
+    font-style: italic;
+    color: #1a1a1a;
+  }
+
+  /* Attribution - styled via the parent p which contains plain text */
+  .prose blockquote p {
+    @apply font-mono text-[11px] md:text-[12px] uppercase tracking-[0.18em] text-gray-400 leading-relaxed;
+  }
+
+  /* But the quote text itself should override the p styles */
+  .prose blockquote p em,
+  .prose blockquote p strong {
+    text-transform: none;
+    letter-spacing: -0.01em;
+  }
+
+  .prose code {
+    @apply font-mono bg-black/5 px-1.5 py-0.5 text-[0.85em] rounded-sm;
+  }
+
+  .prose pre {
+    @apply bg-ink text-gray-100 p-5 overflow-x-auto my-8 text-sm leading-relaxed;
+  }
+
+  .prose pre code {
+    @apply bg-transparent p-0 text-inherit;
+  }
+
+  .prose a {
+    @apply underline underline-offset-2 decoration-1;
+  }
+
+  .prose a:hover {
+    @apply bg-black/5;
+  }
+
+  .prose img {
+    @apply max-w-full h-auto my-8;
+  }
+
+  .prose hr {
+    @apply border-none h-px bg-gray-300 my-12;
+  }
+
+  .prose strong {
+    @apply font-bold;
+  }
+
+  .prose em {
+    @apply italic;
+  }
+}
+
+@media print {
+  body {
+    @apply bg-white;
+  }
+  
+  .page {
+    @apply shadow-none max-w-none p-0;
+  }
+}

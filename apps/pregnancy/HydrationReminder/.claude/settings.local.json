@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(mkdir:*)",
+      "WebFetch(domain:www.eatright.org)",
+      "WebFetch(domain:iifx.dev)",
+      "WebFetch(domain:sarunw.com)",
+      "Bash(git worktree:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(ruby -e:*)",
+      "Bash(git merge:*)",
+      "Bash(git restore:*)",
+      "Bash(git branch:*)",
+      "mcp__exa__web_search_exa",
+      "Bash(sf symbols:*)",
+      "mcp__exa__get_code_context_exa",
+      "WebFetch(domain:www.yahoo.com)",
+      "WebFetch(domain:www.buzzfeed.com)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

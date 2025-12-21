@@ -1,0 +1,6 @@
+{
+  "framework": "astro",
+  "installCommand": "cd ../.. && pnpm install",
+  "buildCommand": "cd ../.. && pnpm run build:blog",
+  "outputDirectory": "dist"
+}

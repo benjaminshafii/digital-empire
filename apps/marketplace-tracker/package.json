@@ -1,0 +1,16 @@
+{
+  "name": "@cool-website/marketplace-tracker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx packages/cli/src/index.ts",
+    "build": "turbo build",
+    "tracker": "tsx packages/cli/src/index.ts",
+    "typecheck": "turbo typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0"
+  }
+}

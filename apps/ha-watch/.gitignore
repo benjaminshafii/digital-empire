@@ -1,0 +1,54 @@
+# Xcode
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+*.xcworkspace/*
+!*.xcworkspace/contents.xcworkspacedata
+xcuserdata/
+*.moved-aside
+*.swp
+*.swo
+*~.nib
+DerivedData/
+.build/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Secrets
+*.env
+secrets.plist
+settings.local.json
+
+# Build logs
+build_logs/
+*.log
+
+# API Keys (stored in keychain, but just in case)
+api_keys.json
+config.json
+
+# Swift Package Manager
+.swiftpm/
+Packages/
+Package.resolved
+
+# CocoaPods
+Pods/
+Podfile.lock
+
+# Carthage
+Carthage/Build/
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# Code coverage
+*.gcda
+*.gcno
+SETUP.md

@@ -1,0 +1,218 @@
+<div class="photocopy-root" data-photocopy-root aria-hidden="true">
+  <div class="photocopy-overlay" data-mode="off">
+    <canvas class="photocopy-three-canvas hidden"></canvas>
+  </div>
+
+  <div class="photocopy-hud hidden" role="status" aria-live="polite">
+    <div class="photocopy-hud-title">Photocopy overlay</div>
+    <div class="photocopy-hud-mode">Mode: <span class="photocopy-hud-mode-name">Off</span></div>
+    <div class="photocopy-hud-help">⌘⇧P toggle • ←/→ cycle</div>
+  </div>
+</div>
+
+<script type="module">
+  const roots = document.querySelectorAll('[data-photocopy-root]')
+
+  for (const root of roots) {
+    const overlay = root.querySelector('.photocopy-overlay')
+    const hud = root.querySelector('.photocopy-hud')
+    const hudModeName = root.querySelector('.photocopy-hud-mode-name')
+    const canvas = root.querySelector('.photocopy-three-canvas')
+
+    if (!overlay || !hud || !hudModeName || !canvas) continue
+
+  /** @type {{ id: string, label: string, kind: 'off' | 'css' | 'three' }[]} */
+  const modes = [
+    { id: 'off', label: 'Off', kind: 'off' },
+    { id: 'css-grain', label: 'CSS: Paper grain', kind: 'css' },
+    { id: 'css-speckles', label: 'CSS: Toner speckles', kind: 'css' },
+    { id: 'css-photocopy', label: 'CSS: Photocopy (grain+scanlines)', kind: 'css' },
+    { id: 'three-noise', label: 'Three.js: Animated noise', kind: 'three' },
+  ]
+
+  let modeIndex = 0
+  let three = null
+
+  function setHudVisible(visible) {
+    hud.classList.toggle('hidden', !visible)
+  }
+
+  function updateHud() {
+    hudModeName.textContent = modes[modeIndex].label
+  }
+
+  async function enableThree() {
+    if (three) return
+
+    const { WebGLRenderer, Scene, OrthographicCamera, PlaneGeometry, ShaderMaterial, Mesh, Vector2 } = await import('three')
+
+    const renderer = new WebGLRenderer({
+      canvas,
+      alpha: true,
+      antialias: false,
+      powerPreference: 'low-power',
+    })
+
+    renderer.setClearColor(0x000000, 0)
+
+    const scene = new Scene()
+    const camera = new OrthographicCamera(-1, 1, 1, -1, 0, 1)
+
+    const uniforms = {
+      uTime: { value: 0 },
+      uResolution: { value: new Vector2(1, 1) },
+    }
+
+    const material = new ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      uniforms,
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        precision highp float;
+        varying vec2 vUv;
+        uniform float uTime;
+        uniform vec2 uResolution;
+
+        float hash(vec2 p) {
+          p = fract(p * vec2(123.34, 345.45));
+          p += dot(p, p + 34.345);
+          return fract(p.x * p.y);
+        }
+
+        void main() {
+          // Subtle animated noise
+          vec2 uv = vUv;
+          float n = hash((uv * uResolution) / 1.8 + uTime * 4.0);
+          n = (n - 0.5);
+
+          // scanlines (still subtle, but visible)
+          float scan = sin((uv.y * uResolution.y) * 1.1);
+          scan = scan * 0.06;
+
+          float v = n * 0.14 + scan;
+
+          float a = abs(v);
+          a = clamp(a, 0.0, 1.0) * 0.16;
+
+          gl_FragColor = vec4(0.0, 0.0, 0.0, a);
+        }
+      `,
+    })
+
+    const geometry = new PlaneGeometry(2, 2)
+    const mesh = new Mesh(geometry, material)
+    scene.add(mesh)
+
+    function resize() {
+      const rect = overlay.getBoundingClientRect()
+      renderer.setSize(rect.width, rect.height, false)
+      uniforms.uResolution.value.set(rect.width, rect.height)
+    }
+
+    let raf = 0
+    let start = performance.now()
+
+    function tick(now) {
+      uniforms.uTime.value = (now - start) / 1000
+      renderer.render(scene, camera)
+      raf = requestAnimationFrame(tick)
+    }
+
+    const ro = new ResizeObserver(resize)
+    ro.observe(overlay)
+
+    resize()
+    raf = requestAnimationFrame(tick)
+
+    three = {
+      renderer,
+      scene,
+      camera,
+      material,
+      geometry,
+      mesh,
+      ro,
+      stop() {
+        cancelAnimationFrame(raf)
+        ro.disconnect()
+        geometry.dispose()
+        material.dispose()
+        renderer.dispose()
+      },
+    }
+  }
+
+  function disableThree() {
+    if (!three) return
+    three.stop()
+    three = null
+  }
+
+  async function applyMode() {
+    const mode = modes[modeIndex]
+    overlay.setAttribute('data-mode', mode.id)
+    updateHud()
+
+    if (mode.kind === 'three') {
+      canvas.classList.remove('hidden')
+      await enableThree()
+      return
+    }
+
+    canvas.classList.add('hidden')
+    disableThree()
+  }
+
+  function cycle(delta) {
+    modeIndex = (modeIndex + delta + modes.length) % modes.length
+    void applyMode()
+  }
+
+  // default: off
+  updateHud()
+
+  function isEditableTarget(target) {
+    if (!(target instanceof HTMLElement)) return false
+    if (target.isContentEditable) return true
+    const tag = target.tagName
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+  }
+
+  window.addEventListener('keydown', (event) => {
+    if (isEditableTarget(event.target)) return
+
+    // Toggle HUD
+    // macOS friendly: ⌘⇧P
+    // fallback: Ctrl+Shift+D (should avoid most browser collisions)
+    const isToggle =
+      (event.metaKey && event.shiftKey && (event.key === 'p' || event.key === 'P')) ||
+      (event.ctrlKey && event.shiftKey && (event.key === 'd' || event.key === 'D'))
+
+    if (isToggle) {
+      event.preventDefault()
+      setHudVisible(hud.classList.contains('hidden'))
+      return
+    }
+
+    if (hud.classList.contains('hidden')) return
+
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault()
+      cycle(-1)
+    }
+
+    if (event.key === 'ArrowRight') {
+      event.preventDefault()
+      cycle(1)
+    }
+  })
+  }
+</script>

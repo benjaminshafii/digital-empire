@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(npm create:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run dev:*)",
+      "mcp__chrome-devtools__new_page",
+      "mcp__chrome-devtools__list_console_messages",
+      "mcp__chrome-devtools__get_console_message",
+      "mcp__chrome-devtools__take_snapshot",
+      "mcp__chrome-devtools__list_network_requests",
+      "mcp__chrome-devtools__navigate_page",
+      "mcp__chrome-devtools__take_screenshot",
+      "mcp__chrome-devtools__evaluate_script",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "mcp__chrome-devtools__wait_for",
+      "mcp__chrome-devtools__click",
+      "WebSearch",
+      "mcp__exa__get_code_context_exa"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

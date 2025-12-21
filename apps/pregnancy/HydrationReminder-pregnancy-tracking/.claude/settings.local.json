@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__exa__web_search_exa",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git restore:*)",
+      "Bash(xcodebuild:*)",
+      "mcp__exa__get_code_context_exa",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebSearch",
+      "WebFetch(domain:www.donnywals.com)",
+      "WebFetch(domain:xavier7t.com)",
+      "Bash(git log:*)",
+      "Bash(ruby -r 'xcodeproj':*)",
+      "Bash(ruby:*)",
+      "Bash(killall:*)",
+      "Bash(git push:*)",
+      "Bash(git config:*)",
+      "Bash(find:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(git worktree:*)",
+      "Bash(git worktree add:*)",
+      "Bash(git merge --no-ff feature/supplement-ui-improvements -m \"$(cat <<''EOF''\nMerge feature/supplement-ui-improvements into master\n\nTask B - Supplement UI Improvements\n- Enhanced supplement entry interface\n- Improved user experience for supplement tracking\nEOF\n)\")",
+      "Bash(git merge:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git branch:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

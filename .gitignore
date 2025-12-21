@@ -1,0 +1,38 @@
+node_modules
+bun.lock
+.turbo/
+dist
+.astro
+.DS_Store
+data.json
+main.js
+venv/
+__pycache__/
+*.pyc
+outputs/
+opencode.json
+
+# Logs
+*.log
+**/build_logs/
+**/Packaging.log
+**/DistributionSummary.plist
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Xcode build artifacts
+**/DerivedData/
+*.xcarchive/
+**/build/
+**/*.swiftmodule/
+**/*.pcm
+**/XCBuildData/
+**/SwiftExplicitPrecompiledModules/
+
+# Secrets
+*.pem
+*.key
+*.p12

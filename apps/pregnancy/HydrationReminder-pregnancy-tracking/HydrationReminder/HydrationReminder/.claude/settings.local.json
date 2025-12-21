@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/benjaminshafii/preg-app/HydrationReminder/**)",
+      "Bash(xcodebuild:*)",
+      "Bash(ruby:*)",
+      "WebSearch"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

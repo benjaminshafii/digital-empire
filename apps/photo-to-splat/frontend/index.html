@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Photo to Splat</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #0a0a0a;
+        color: #fff;
+        min-height: 100vh;
+      }
+      
+      #app {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+      
+      header {
+        padding: 1rem 2rem;
+        background: #111;
+        border-bottom: 1px solid #222;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      
+      header h1 {
+        font-size: 1.25rem;
+        font-weight: 500;
+      }
+      
+      .upload-area {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-left: auto;
+      }
+      
+      .upload-btn {
+        background: #2563eb;
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.875rem;
+        transition: background 0.2s;
+      }
+      
+      .upload-btn:hover {
+        background: #1d4ed8;
+      }
+      
+      .upload-btn:disabled {
+        background: #333;
+        cursor: not-allowed;
+      }
+      
+      #file-input {
+        display: none;
+      }
+      
+      .status {
+        font-size: 0.875rem;
+        color: #888;
+      }
+      
+      .status.loading {
+        color: #f59e0b;
+      }
+      
+      .status.success {
+        color: #10b981;
+      }
+      
+      .status.error {
+        color: #ef4444;
+      }
+      
+      main {
+        flex: 1;
+        display: flex;
+        position: relative;
+      }
+      
+      #viewer {
+        flex: 1;
+        background: #0a0a0a;
+      }
+      
+      .empty-state {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #666;
+        gap: 1rem;
+      }
+      
+      .empty-state.hidden {
+        display: none;
+      }
+      
+      .empty-state svg {
+        width: 64px;
+        height: 64px;
+        opacity: 0.5;
+      }
+      
+      .drop-zone {
+        border: 2px dashed #333;
+        border-radius: 12px;
+        padding: 3rem;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.2s, background 0.2s;
+      }
+      
+      .drop-zone:hover,
+      .drop-zone.dragover {
+        border-color: #2563eb;
+        background: rgba(37, 99, 235, 0.1);
+      }
+      
+      .controls {
+        position: absolute;
+        bottom: 1rem;
+        left: 1rem;
+        background: rgba(0, 0, 0, 0.8);
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        color: #888;
+      }
+      
+      .preview-image {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        max-width: 200px;
+        max-height: 150px;
+        border-radius: 8px;
+        border: 2px solid #333;
+        object-fit: cover;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>Photo to Splat</h1>
+        <div class="upload-area">
+          <span id="status" class="status">Ready</span>
+          <input type="file" id="file-input" accept="image/*" />
+          <button class="upload-btn" id="upload-btn">Upload Photo</button>
+        </div>
+      </header>
+      <main>
+        <div id="viewer"></div>
+        <div id="empty-state" class="empty-state">
+          <div class="drop-zone" id="drop-zone">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <p>Drop an image here or click to upload</p>
+            <p style="font-size: 0.75rem; margin-top: 0.5rem;">Converts to 3D Gaussian Splat using SHARP</p>
+          </div>
+        </div>
+        <img id="preview-image" class="preview-image" style="display: none;" />
+        <div class="controls" id="controls" style="display: none;">
+          <strong>Controls:</strong> Drag to rotate, Scroll to zoom, Right-click to pan
+        </div>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

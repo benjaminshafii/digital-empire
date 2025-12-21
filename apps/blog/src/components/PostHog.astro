@@ -1,0 +1,13 @@
+<script type="module">
+  import posthog from 'posthog-js'
+
+  const posthogKey = import.meta.env.PUBLIC_POSTHOG_KEY
+  const posthogHost = import.meta.env.PUBLIC_POSTHOG_HOST
+
+  if (posthogKey && posthogHost) {
+    posthog.init(posthogKey, {
+      api_host: posthogHost,
+      defaults: '2025-11-30',
+    })
+  }
+</script>

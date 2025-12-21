@@ -1,0 +1,19 @@
+# Large unused 3D assets
+apps/portfolio/public/textured_mesh_glb 3.glb
+apps/portfolio/public/textured_mesh_glb 4.glb
+apps/portfolio/public/textured_mesh_medpoly_glb.glb
+apps/portfolio/public/textured_mesh_lowpoly_glb.glb
+apps/portfolio/public/textured_mesh_lowpoly_glb 2.glb
+apps/portfolio/public/temp.glb
+apps/portfolio/public/temp_unlit.glb
+apps/portfolio/public/ben_wireframe_optimized.glb
+apps/portfolio/public/GL Transmission Format - Binary.glb
+apps/portfolio/public/Space Shuttle (D) eng.glb
+
+# Node modules
+node_modules
+
+# Build caches
+.turbo
+dist
+.astro

@@ -1,0 +1,6 @@
+packages:
+  - apps/*
+  - apps/marketplace-tracker/packages/*
+  - packages/*
+ignoredBuiltDependencies:
+  - better-sqlite3

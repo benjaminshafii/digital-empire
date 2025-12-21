@@ -1,0 +1,985 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Life-Flow Ouroboros (Single Stream + Accumulation)</title>
+  <style>
+    html, body { margin:0; height:100%; overflow:hidden; background:#05070c; }
+    #hud{
+      position:fixed; left:12px; top:12px;
+      color:#e9eefc;
+      font: 12px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: rgba(0,0,0,0.45);
+      padding:10px 12px;
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius:10px;
+      max-width: 460px;
+      backdrop-filter: blur(6px);
+      user-select: none;
+    }
+    #hud b { font-weight: 650; }
+    #hud .tiny { opacity:0.75; font-size: 11px; margin-top:6px; }
+    #stats { margin-top:8px; font-feature-settings:"tnum" 1; font-variant-numeric: tabular-nums; opacity:0.9; }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <b>life-flow ouroboros</b><br/>
+    one stream, always looping. good life = smooth flow. bad life = local swelling (congestion).<br/>
+    click a gate to open it. locked gates glow red and won’t move.<br/>
+    <div class="tiny">orbit: drag • zoom: wheel • pan: right-drag • R = reshuffle maze</div>
+    <div id="stats"></div>
+  </div>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./node_modules/three/build/three.module.js",
+        "three/addons/": "./node_modules/three/examples/jsm/"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+    import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+    import { RoomEnvironment } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/environments/RoomEnvironment.js';
+    import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js';
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Ouroboros grid (ring + inner maze)
+    ////////////////////////////////////////////////////////////////////////////
+
+    const ANG = 18;      // nodes around
+    const RAD = 5;       // rings
+    const OUTER = RAD - 1;
+
+    const R_INNER = 2.2;
+    const R_STEP  = 0.95;
+    const Y_BASE  = 0.82;
+    const Y_STEP  = -0.05;
+
+    // Pipe sizes
+    const PIPE_R  = 0.22;
+    const WATER_R = 0.205; // (4) more obvious
+    const JUNC_R  = 0.31;
+
+    // Stream simulation (life)
+    const LOOP_SECTIONS = 96;      // how many “life segments” can swell independently
+    const BUBBLES = 1600;          // higher = smoother density field
+    const BASE_FLOW = 1.35;        // “life force”
+    const DENSITY_DRAG = 1.20;     // how much congestion slows flow
+    const JAM_THRESHOLD = 1.55;    // density above this = “change required” signal
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Scene
+    ////////////////////////////////////////////////////////////////////////////
+
+    const renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:"high-performance" });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
+    renderer.physicallyCorrectLights = true;
+    document.body.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x070a12);
+    scene.fog = new THREE.FogExp2(0x070a12, 0.055);
+
+    const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.05, 180);
+    camera.position.set(9, 10, 11);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 1.25, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.85, 0.65, 0.78);
+    composer.addPass(bloom);
+
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    pmrem.dispose();
+
+    const key = new THREE.DirectionalLight(0xffffff, 1.35);
+    key.position.set(6, 10, 3);
+    scene.add(key);
+
+    const fill = new THREE.DirectionalLight(0x88aaff, 0.55);
+    fill.position.set(-9, 6, -6);
+    scene.add(fill);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.22));
+
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(90,90),
+      new THREE.MeshStandardMaterial({ color:0x0f1422, roughness:0.95, metalness:0.05 })
+    );
+    floor.rotation.x = -Math.PI/2;
+    floor.position.y = -0.02;
+    scene.add(floor);
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Materials
+    ////////////////////////////////////////////////////////////////////////////
+
+    const pipeMatBase = new THREE.MeshPhysicalMaterial({
+      color: 0xa9bddf,
+      transmission: 1.0,
+      thickness: 0.06,
+      ior: 1.45,
+      roughness: 0.22,
+      metalness: 0.0,
+      transparent: true,
+      opacity: 0.20,
+      clearcoat: 0.18,
+      clearcoatRoughness: 0.12,
+      side: THREE.DoubleSide
+    });
+
+    const juncMatBase = pipeMatBase.clone();
+    juncMatBase.opacity = 0.18;
+    juncMatBase.roughness = 0.18;
+
+    const gateMatBase = new THREE.MeshStandardMaterial({
+      color: 0x1b2330,
+      roughness: 0.75,
+      metalness: 0.2,
+      transparent: true,
+      opacity: 1.0,
+      emissive: new THREE.Color(0x000000),
+      emissiveIntensity: 0.0
+    });
+
+    // FIXED normals URL (your npm path 404s)
+    const WATER_NORMALS_URL =
+      'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/textures/waternormals.jpg';
+
+    const loader = new THREE.TextureLoader();
+    loader.setCrossOrigin('anonymous');
+
+    const waterNormals = loader.load(WATER_NORMALS_URL);
+    waterNormals.wrapS = waterNormals.wrapT = THREE.RepeatWrapping;
+    waterNormals.repeat.set(1, 24);
+    waterNormals.colorSpace = THREE.NoColorSpace;
+
+    const waterMatBase = new THREE.MeshPhysicalMaterial({
+      color: 0x3aa3ff,
+      transmission: 1.0,
+      thickness: 0.65,
+      ior: 1.333,
+      roughness: 0.05,
+      metalness: 0.0,
+      clearcoat: 0.22,
+      clearcoatRoughness: 0.05,
+      attenuationDistance: 2.9,
+      attenuationColor: new THREE.Color(0x07234a),
+      transparent: true,
+      opacity: 0.995,
+      normalMap: waterNormals,
+      normalScale: new THREE.Vector2(0.55, 0.55),
+      emissive: new THREE.Color(0x0a2a55),
+      emissiveIntensity: 0.85,
+      side: THREE.DoubleSide
+    });
+    waterMatBase.depthWrite = false;
+
+    const glowMatBase = new THREE.MeshBasicMaterial({
+      color: 0x6ec0ff,
+      transparent: true,
+      opacity: 0.14,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Index helpers + positions
+    ////////////////////////////////////////////////////////////////////////////
+
+    const NODES = ANG * RAD;
+
+    function idxOf(a, r) {
+      const aa = ((a % ANG) + ANG) % ANG;
+      return aa + r * ANG;
+    }
+    function arOf(idx) { return [idx % ANG, Math.floor(idx / ANG)]; }
+    function edgeKey(a,b){ return (a<b) ? `${a}_${b}` : `${b}_${a}`; }
+
+    function neighbors(idx) {
+      const [a,r] = arOf(idx);
+      return [
+        idxOf(a+1, r),
+        idxOf(a-1, r),
+        ...(r > 0 ? [idxOf(a, r-1)] : []),
+        ...(r < RAD-1 ? [idxOf(a, r+1)] : []),
+      ];
+    }
+
+    function isInner(idx) {
+      const [,r] = arOf(idx);
+      return r < OUTER;
+    }
+
+    const nodePos = new Array(NODES);
+    for (let r=0; r<RAD; r++){
+      const radius = R_INNER + r * R_STEP;
+      const y = Y_BASE + r * Y_STEP;
+      for (let a=0; a<ANG; a++){
+        const t = (a / ANG) * Math.PI * 2;
+        nodePos[idxOf(a,r)] = new THREE.Vector3(Math.cos(t)*radius, y, Math.sin(t)*radius);
+      }
+    }
+
+    // Mouth + knot (“life circulates back into itself”)
+    const sourceAngle = 0;
+    const knotAngle   = Math.floor(ANG / 2);
+    const sourceRing  = 1;
+    const knotRing    = 1;
+
+    const sourceIdx = idxOf(sourceAngle, sourceRing);
+    const knotIdx   = idxOf(knotAngle,   knotRing);
+
+    // Markers
+    const markerGeom = new THREE.SphereGeometry(0.13, 20, 16);
+    const mouth = new THREE.Mesh(markerGeom, new THREE.MeshStandardMaterial({
+      color: 0x6bb6ff, emissive: 0x1a4cff, emissiveIntensity: 0.75
+    }));
+    mouth.position.copy(nodePos[sourceIdx]);
+    scene.add(mouth);
+
+    const knot = new THREE.Mesh(markerGeom, new THREE.MeshStandardMaterial({
+      color: 0xb28dff, emissive: 0x5a1aff, emissiveIntensity: 0.65
+    }));
+    knot.position.copy(nodePos[knotIdx]);
+    scene.add(knot);
+
+    // Junction spheres (glass)
+    const juncGeom = new THREE.SphereGeometry(JUNC_R, 22, 18);
+    for (let i=0;i<NODES;i++){
+      const j = new THREE.Mesh(juncGeom, juncMatBase.clone());
+      j.position.copy(nodePos[i]);
+      scene.add(j);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Edges = pipes + gates. Also: friction (obstacles that never fully disappear)
+    ////////////////////////////////////////////////////////////////////////////
+
+    const pipeGeomUnit = new THREE.CylinderGeometry(PIPE_R, PIPE_R, 1, 18, 1, true);
+    const gateGeom = new THREE.BoxGeometry(PIPE_R*2.35, PIPE_R*2.35, 0.16);
+
+    const edges = [];
+    const edgeMap = new Map();
+    const gateMeshes = [];
+
+    function isOuterAngularEdge(a, r) {
+      return r === OUTER;
+    }
+
+    function isFixedConnectorRadialEdge(a, r) {
+      if (a === sourceAngle && r >= sourceRing && r < OUTER) return true;
+      if (a === knotAngle   && r >= knotRing   && r < OUTER) return true;
+      return false;
+    }
+
+    class Edge {
+      constructor(aIdx, bIdx, opts) {
+        this.a = aIdx;
+        this.b = bIdx;
+
+        this.immutable = !!opts.immutable;
+        this.clickable = !!opts.clickable;
+        this.open = !!opts.open;
+        this.locked = false;
+
+        // (3) obstacles always: each traversable edge has some friction (aperture < 1)
+        // if the user opens a previously-closed gate, that new passage is "cleaner" (aperture=1)
+        this.baseAperture = opts.immutable ? 0.92 : (0.35 + Math.random()*0.5);
+        this.userOpened = false;
+
+        const pA = nodePos[this.a], pB = nodePos[this.b];
+        this.length = pA.distanceTo(pB);
+
+        const dir = new THREE.Vector3().subVectors(pB, pA);
+        const len = dir.length();
+        const mid = new THREE.Vector3().addVectors(pA, pB).multiplyScalar(0.5);
+        const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0), dir.clone().normalize());
+
+        this.pipe = new THREE.Mesh(pipeGeomUnit, pipeMatBase.clone());
+        this.pipe.position.copy(mid);
+        this.pipe.quaternion.copy(quat);
+        this.pipe.scale.set(1, len, 1);
+        scene.add(this.pipe);
+
+        this.gate = new THREE.Mesh(gateGeom, gateMatBase.clone());
+        this.gate.position.copy(mid);
+        this.gate.quaternion.copy(quat);
+        this.gate.userData.edge = this;
+        this.gate.visible = this.clickable;
+        scene.add(this.gate);
+
+        this.closedY = mid.y;
+        this.openY   = mid.y - 1.05;
+
+        this.anim = this.open ? 1 : 0;
+        this.target = this.open ? 1 : 0;
+
+        if (this.clickable) gateMeshes.push(this.gate);
+      }
+
+      get aperture() {
+        if (this.immutable) return 0.92;
+        if (!this.open) return 0.0;
+        return this.userOpened ? 1.0 : this.baseAperture;
+      }
+
+      setOpen(v, immediate=false){
+        if (this.locked && v) return;
+        if (this.immutable) v = true;
+        this.open = v;
+        this.target = v ? 1 : 0;
+        if (immediate) this.anim = this.target;
+      }
+
+      removeWall(){
+        if (!this.clickable) return false;
+        if (this.locked) return false;
+        if (!this.open) {
+          this.userOpened = true; // opening a new door = cleaner passage
+        }
+        this.setOpen(true, false);
+        return true;
+      }
+
+      update(dt){
+        const speed = 10.0;
+        this.anim = THREE.MathUtils.lerp(this.anim, this.target, 1 - Math.exp(-speed*dt));
+
+        if (this.clickable) {
+          this.gate.position.y = THREE.MathUtils.lerp(this.closedY, this.openY, this.anim);
+          this.gate.material.opacity = THREE.MathUtils.lerp(1.0, 0.0, this.anim);
+        }
+      }
+
+      flashLocked(){
+        const m = this.gate.material;
+        m.emissiveIntensity = 2.0;
+        setTimeout(()=> m.emissiveIntensity = 0.85, 120);
+      }
+    }
+
+    function addEdge(aIdx, bIdx, opts){
+      const key = edgeKey(aIdx, bIdx);
+      if (edgeMap.has(key)) return;
+      const e = new Edge(aIdx, bIdx, opts);
+      edges.push(e);
+      edgeMap.set(key, e);
+    }
+
+    // Angular edges
+    for (let r=0; r<RAD; r++){
+      for (let a=0; a<ANG; a++){
+        const aIdx = idxOf(a, r);
+        const bIdx = idxOf(a+1, r);
+        const immutable = isOuterAngularEdge(a, r);
+        addEdge(aIdx, bIdx, { open: immutable, immutable, clickable: !immutable });
+      }
+    }
+
+    // Radial edges
+    for (let r=0; r<RAD-1; r++){
+      for (let a=0; a<ANG; a++){
+        const aIdx = idxOf(a, r);
+        const bIdx = idxOf(a, r+1);
+        const immutable = isFixedConnectorRadialEdge(a, r);
+        addEdge(aIdx, bIdx, { open: immutable, immutable, clickable: !immutable });
+      }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Maze generation (inner rings): guarantees connectivity, keeps obstacles
+    ////////////////////////////////////////////////////////////////////////////
+
+    function buildMaze(){
+      // reset non-immutable edges
+      for (const e of edges){
+        e.locked = false;
+        e.userOpened = false;
+
+        if (e.immutable) {
+          e.setOpen(true, true);
+          continue;
+        }
+
+        e.setOpen(false, true);
+        if (e.clickable) {
+          e.gate.material.color.setHex(0x1b2330);
+          e.gate.material.emissive.setHex(0x000000);
+          e.gate.material.emissiveIntensity = 0.0;
+        }
+      }
+
+      // spanning tree over inner nodes => always at least one route
+      const visited = new Array(NODES).fill(false);
+      const stack = [sourceIdx];
+      visited[sourceIdx] = true;
+
+      while (stack.length){
+        const cur = stack[stack.length - 1];
+        const cand = neighbors(cur).filter(nb => isInner(nb) && !visited[nb]);
+        if (!cand.length) { stack.pop(); continue; }
+
+        const nxt = cand[(Math.random()*cand.length)|0];
+        visited[nxt] = true;
+        stack.push(nxt);
+
+        const e = edgeMap.get(edgeKey(cur, nxt));
+        if (e && !e.immutable) e.setOpen(true, true);
+      }
+
+      // a few extra openings, but keep plenty closed gates
+      for (let k=0; k<Math.floor(edges.length*0.06); k++){
+        const e = edges[(Math.random()*edges.length)|0];
+        if (!e.immutable) e.setOpen(true, true);
+      }
+
+      // (3) always obstacles: lock some closed gates
+      for (const e of edges){
+        if (e.immutable) continue;
+        if (e.open) continue;
+        if (Math.random() < 0.22){
+          e.locked = true;
+          if (e.clickable){
+            e.gate.material.color.setHex(0x42101a);
+            e.gate.material.emissive.setHex(0xaa0030);
+            e.gate.material.emissiveIntensity = 0.85;
+          }
+        }
+      }
+
+      recomputeLoop();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Path choice: least resistance (life tends to route around friction)
+    ////////////////////////////////////////////////////////////////////////////
+
+    function edgeOpen(aIdx, bIdx){
+      const e = edgeMap.get(edgeKey(aIdx, bIdx));
+      return !!(e && e.open);
+    }
+
+    function edgeObj(aIdx, bIdx){
+      return edgeMap.get(edgeKey(aIdx, bIdx)) || null;
+    }
+
+    // Dijkstra on inner graph, weight = length / aperture
+    function leastResistancePath(start, goal){
+      const dist = new Float32Array(NODES);
+      const prev = new Int32Array(NODES);
+      const used = new Uint8Array(NODES);
+      dist.fill(Infinity);
+      prev.fill(-1);
+
+      dist[start] = 0;
+      prev[start] = start;
+
+      for (let iter=0; iter<NODES; iter++){
+        let u = -1;
+        let best = Infinity;
+
+        for (let i=0;i<NODES;i++){
+          if (!isInner(i)) continue;
+          if (used[i]) continue;
+          if (dist[i] < best){
+            best = dist[i];
+            u = i;
+          }
+        }
+        if (u === -1) break;
+        used[u] = 1;
+        if (u === goal) break;
+
+        for (const nb of neighbors(u)){
+          if (!isInner(nb)) continue;
+          if (!edgeOpen(u, nb)) continue;
+
+          const e = edgeObj(u, nb);
+          if (!e) continue;
+
+          const ap = Math.max(0.12, e.aperture);
+          const w = e.length / ap;
+
+          const nd = dist[u] + w;
+          if (nd < dist[nb]){
+            dist[nb] = nd;
+            prev[nb] = u;
+          }
+        }
+      }
+
+      if (prev[goal] === -1) return null;
+
+      const path = [];
+      let cur = goal;
+      while (cur !== start){
+        path.push(cur);
+        cur = prev[cur];
+      }
+      path.push(start);
+      path.reverse();
+      return path;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Build closed ouroboros loop: forward path + outer return
+    ////////////////////////////////////////////////////////////////////////////
+
+    function computeLoopNodes(){
+      const forward = leastResistancePath(sourceIdx, knotIdx) || [sourceIdx, knotIdx];
+
+      const loop = [];
+      for (const n of forward) loop.push(n);
+
+      // outward from knot -> outer at knot angle
+      for (let r = knotRing + 1; r <= OUTER; r++){
+        loop.push(idxOf(knotAngle, r));
+      }
+
+      // around outer ring (clockwise) knotAngle -> sourceAngle
+      let a = (knotAngle + 1) % ANG;
+      for (let steps=0; steps<ANG+2; steps++){
+        loop.push(idxOf(a, OUTER));
+        if (a === sourceAngle) break;
+        a = (a + 1) % ANG;
+      }
+
+      // inward toward mouth, stop above source to keep closure clean
+      for (let r = OUTER - 1; r >= sourceRing + 1; r--){
+        loop.push(idxOf(sourceAngle, r));
+      }
+
+      return { forward, loop };
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Water curve + segmented water meshes (so sections can inflate)
+    ////////////////////////////////////////////////////////////////////////////
+
+    class SubCurve extends THREE.Curve {
+      constructor(parent, u0, u1){ super(); this.parent=parent; this.u0=u0; this.u1=u1; }
+      getPoint(t, target=new THREE.Vector3()){
+        const u = this.u0 + (this.u1 - this.u0) * t;
+        return this.parent.getPointAt(u, target);
+      }
+    }
+
+    let waterCurve = null;
+    let curveLength = 1;
+    let loopKey = '';
+
+    let waterSegMeshes = [];
+    let glowSegMeshes = [];
+    let waterSegMats  = [];
+    let glowSegMats   = [];
+
+    // mapping u -> loop edge aperture
+    let loopEdgeKeys = [];
+    let loopEdgeLens = [];
+    let loopCumLens  = [];
+    let loopTotalLen = 1;
+    let capBins = new Float32Array(LOOP_SECTIONS);
+
+    function rebuildWater(loopNodes){
+      const k = loopNodes.join(',');
+      if (k === loopKey) return;
+      loopKey = k;
+
+      // cleanup old
+      for (const m of waterSegMeshes) { scene.remove(m); m.geometry.dispose(); }
+      for (const m of glowSegMeshes)  { scene.remove(m); m.geometry.dispose(); }
+      waterSegMeshes = [];
+      glowSegMeshes  = [];
+      waterSegMats   = [];
+      glowSegMats    = [];
+
+      // curve
+      const pts = loopNodes.map(i => nodePos[i].clone());
+      waterCurve = new THREE.CatmullRomCurve3(pts, true, 'centripetal', 0.55);
+      curveLength = Math.max(0.001, waterCurve.getLength());
+
+      // edge list for capacity map
+      loopEdgeKeys = [];
+      loopEdgeLens = [];
+      loopCumLens  = [0];
+      loopTotalLen = 0;
+
+      for (let i=0;i<loopNodes.length;i++){
+        const a = loopNodes[i];
+        const b = loopNodes[(i+1) % loopNodes.length];
+        const key = edgeKey(a,b);
+        loopEdgeKeys.push(key);
+
+        const len = nodePos[a].distanceTo(nodePos[b]);
+        loopEdgeLens.push(len);
+        loopTotalLen += len;
+        loopCumLens.push(loopTotalLen);
+      }
+
+      function edgeIndexAtU(u){
+        const d = u * loopTotalLen;
+        let lo=0, hi=loopCumLens.length-1;
+        while (lo < hi){
+          const mid = (lo + hi) >> 1;
+          if (loopCumLens[mid+1] < d) lo = mid + 1;
+          else hi = mid;
+        }
+        return Math.min(loopEdgeKeys.length-1, lo);
+      }
+
+      // precompute cap per bin (doors -> local throughput)
+      for (let s=0; s<LOOP_SECTIONS; s++){
+        const uMid = (s + 0.5) / LOOP_SECTIONS;
+        const ei = edgeIndexAtU(uMid);
+        const e = edgeMap.get(loopEdgeKeys[ei]);
+        capBins[s] = e ? Math.max(0.12, e.aperture) : 0.6;
+      }
+
+      // build segmented tubes
+      for (let s=0; s<LOOP_SECTIONS; s++){
+        const u0 = s / LOOP_SECTIONS;
+        const u1 = (s + 1) / LOOP_SECTIONS;
+
+        const sub = new SubCurve(waterCurve, u0, u1);
+        const geom = new THREE.TubeGeometry(sub, 18, WATER_R, 16, false);
+
+        const wMat = waterMatBase.clone();
+        const gMat = glowMatBase.clone();
+
+        const wMesh = new THREE.Mesh(geom, wMat);
+        const gMesh = new THREE.Mesh(geom.clone(), gMat);
+
+        wMesh.renderOrder = 2;
+        gMesh.renderOrder = 3;
+
+        scene.add(wMesh);
+        scene.add(gMesh);
+
+        waterSegMeshes.push(wMesh);
+        glowSegMeshes.push(gMesh);
+        waterSegMats.push(wMat);
+        glowSegMats.push(gMat);
+      }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Bubbles (life units) + density field (accumulation)
+    ////////////////////////////////////////////////////////////////////////////
+
+    function makeBubbleTex(){
+      const c = document.createElement('canvas');
+      c.width = c.height = 64;
+      const ctx = c.getContext('2d');
+      const g = ctx.createRadialGradient(32,32,2, 32,32,28);
+      g.addColorStop(0.0, 'rgba(255,255,255,0.95)');
+      g.addColorStop(0.35,'rgba(255,255,255,0.35)');
+      g.addColorStop(1.0, 'rgba(255,255,255,0.0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0,0,64,64);
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    const bubblePos = new Float32Array(BUBBLES*3);
+    const bubbleU   = new Float32Array(BUBBLES);
+    const bubblePhi = new Float32Array(BUBBLES);
+    const bubbleRad = new Float32Array(BUBBLES);
+
+    for (let i=0;i<BUBBLES;i++){
+      bubbleU[i] = Math.random();
+      bubblePhi[i] = Math.random()*Math.PI*2;
+      bubbleRad[i] = Math.random()*(WATER_R*0.55);
+      bubblePos[i*3+0]=999; bubblePos[i*3+1]=-999; bubblePos[i*3+2]=999;
+    }
+
+    const bubbleGeom = new THREE.BufferGeometry();
+    bubbleGeom.setAttribute('position', new THREE.BufferAttribute(bubblePos, 3));
+
+    const bubbleMat = new THREE.PointsMaterial({
+      map: makeBubbleTex(),
+      transparent: true,
+      opacity: 0.65,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      size: 0.07
+    });
+
+    const bubblePoints = new THREE.Points(bubbleGeom, bubbleMat);
+    scene.add(bubblePoints);
+
+    const bins = new Float32Array(LOOP_SECTIONS);
+    const smooth = new Float32Array(LOOP_SECTIONS);
+
+    function computeDensity(){
+      bins.fill(0);
+      for (let i=0;i<BUBBLES;i++){
+        const s = Math.floor(bubbleU[i] * LOOP_SECTIONS) % LOOP_SECTIONS;
+        bins[s] += 1;
+      }
+
+      const avg = BUBBLES / LOOP_SECTIONS;
+
+      // circular smoothing (2 passes)
+      for (let s=0;s<LOOP_SECTIONS;s++){
+        const a = bins[(s-1+LOOP_SECTIONS)%LOOP_SECTIONS];
+        const b = bins[s];
+        const c = bins[(s+1)%LOOP_SECTIONS];
+        smooth[s] = (a + 2*b + c) / (4*avg);
+      }
+      for (let s=0;s<LOOP_SECTIONS;s++){
+        const a = smooth[(s-1+LOOP_SECTIONS)%LOOP_SECTIONS];
+        const b = smooth[s];
+        const c = smooth[(s+1)%LOOP_SECTIONS];
+        smooth[s] = (a + 2*b + c) / 4;
+      }
+    }
+
+    function updateBubbles(dt, t){
+      if (!waterCurve || curveLength < 1e-3) return;
+
+      // density affects speed; bottlenecks affect speed; both create pileups
+      const p  = new THREE.Vector3();
+      const p2 = new THREE.Vector3();
+      const tan = new THREE.Vector3();
+
+      const ref = new THREE.Vector3(0,1,0);
+      const n = new THREE.Vector3();
+      const b = new THREE.Vector3();
+
+      const eps = 0.002;
+
+      for (let i=0;i<BUBBLES;i++){
+        const seg = Math.floor(bubbleU[i] * LOOP_SECTIONS) % LOOP_SECTIONS;
+
+        const cap = capBins[seg] || 0.6;
+        const d = Math.max(0, smooth[seg] - 1.0); // 0 when balanced; grows with congestion
+        const drag = 1.0 / (1.0 + DENSITY_DRAG * d * d);
+
+        const jitter = 0.85 + 0.25*Math.sin(t*0.7 + i*0.01);
+        const speed = BASE_FLOW * cap * drag * jitter;
+
+        bubbleU[i] = (bubbleU[i] + (speed / curveLength) * dt) % 1.0;
+
+        // positions
+        waterCurve.getPointAt(bubbleU[i], p);
+        waterCurve.getPointAt((bubbleU[i] + eps) % 1.0, p2);
+        tan.subVectors(p2, p).normalize();
+
+        if (Math.abs(tan.dot(ref)) > 0.92) ref.set(1,0,0);
+        else ref.set(0,1,0);
+
+        n.crossVectors(tan, ref).normalize();
+        b.crossVectors(tan, n).normalize();
+
+        const phi = bubblePhi[i] + t*1.7;
+        const rr = bubbleRad[i] * (0.55 + 0.45*Math.sin(t*2.1 + i*0.013));
+
+        const ox = Math.cos(phi) * rr;
+        const oz = Math.sin(phi) * rr;
+
+        const ix = i*3;
+        bubblePos[ix+0] = p.x + n.x*ox + b.x*oz;
+        bubblePos[ix+1] = p.y + n.y*ox + b.y*oz;
+        bubblePos[ix+2] = p.z + n.z*ox + b.z*oz;
+      }
+
+      bubbleGeom.attributes.position.needsUpdate = true;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Inflate water segments where congestion accumulates (5) and (6)
+    ////////////////////////////////////////////////////////////////////////////
+
+    function updateInflation(){
+      let maxD = 0;
+      let jamCount = 0;
+
+      for (let s=0; s<LOOP_SECTIONS; s++){
+        const d = smooth[s];
+        maxD = Math.max(maxD, d);
+        if (d > JAM_THRESHOLD) jamCount++;
+
+        // inflation factor
+        // d ~ 1 means “balanced”; >1 means “accumulation”
+        const bulge = 1.0 + 0.55 * Math.min(2.2, Math.max(0, d - 1.0)); // cap bulge
+
+        const w = waterSegMeshes[s];
+        const g = glowSegMeshes[s];
+
+        w.scale.x = w.scale.z = bulge;
+        g.scale.x = g.scale.z = bulge * 1.06;
+
+        // more obvious: glow shifts warmer when jammed
+        const jam = d > JAM_THRESHOLD;
+        glowSegMats[s].color.setHex(jam ? 0xff6a3a : 0x6ec0ff);
+        glowSegMats[s].opacity = jam ? 0.24 : 0.14;
+
+        waterSegMats[s].emissiveIntensity = jam ? 1.25 : 0.85;
+      }
+
+      return { maxD, jamCount };
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Visual state for pipes/gates
+    ////////////////////////////////////////////////////////////////////////////
+
+    function updateEdgeVisuals(loopNodes){
+      const loopEdges = new Set();
+      for (let i=0;i<loopNodes.length;i++){
+        loopEdges.add(edgeKey(loopNodes[i], loopNodes[(i+1) % loopNodes.length]));
+      }
+
+      for (const e of edges){
+        if (e.immutable){
+          e.pipe.material.color.setHex(0x97c0ff);
+          e.pipe.material.opacity = 0.30;
+          continue;
+        }
+
+        if (e.locked){
+          e.pipe.material.color.setHex(0x7c3a48);
+          e.pipe.material.opacity = 0.26;
+          continue;
+        }
+
+        if (!e.open){
+          e.pipe.material.color.setHex(0x7c8aa6);
+          e.pipe.material.opacity = 0.10;
+          continue;
+        }
+
+        // open
+        const onLoop = loopEdges.has(edgeKey(e.a, e.b));
+        const ap = e.aperture;
+        if (onLoop){
+          // brighter if on the chosen “life circuit”
+          e.pipe.material.color.setHex(ap < 0.35 ? 0x9bb6dd : 0xa9d8ff);
+          e.pipe.material.opacity = 0.34;
+        } else {
+          e.pipe.material.color.setHex(0x9bb6dd);
+          e.pipe.material.opacity = 0.18;
+        }
+      }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Recompute loop
+    ////////////////////////////////////////////////////////////////////////////
+
+    const statsEl = document.getElementById('stats');
+
+    function recomputeLoop(){
+      const { forward, loop } = computeLoopNodes();
+      rebuildWater(loop);
+      updateEdgeVisuals(loop);
+      statsEl.textContent = `loop nodes: ${loop.length} • forward nodes: ${forward.length}`;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Interaction
+    ////////////////////////////////////////////////////////////////////////////
+
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    function onPointerDown(ev){
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const hits = raycaster.intersectObjects(gateMeshes, false);
+      if (!hits.length) return;
+
+      const edge = hits[0].object.userData.edge;
+      if (!edge) return;
+
+      if (edge.locked){
+        edge.flashLocked();
+        return;
+      }
+
+      if (edge.removeWall()){
+        recomputeLoop();
+      }
+    }
+
+    renderer.domElement.addEventListener('pointerdown', onPointerDown);
+    addEventListener('keydown', (e)=>{ if (e.key.toLowerCase() === 'r') buildMaze(); });
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Animate
+    ////////////////////////////////////////////////////////////////////////////
+
+    const clock = new THREE.Clock();
+    let t = 0;
+
+    function animate(){
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 0.033);
+      t += dt;
+
+      // flow look
+      waterNormals.offset.y = (-t * 0.55) % 1;
+      waterNormals.offset.x = ( t * 0.06) % 1;
+
+      for (const e of edges) e.update(dt);
+
+      computeDensity();
+      updateBubbles(dt, t);
+      const { maxD, jamCount } = updateInflation();
+
+      // HUD: “life health”
+      const health = Math.max(0, Math.min(1, 1 - (maxD - 1) * 0.33));
+      const label =
+        health > 0.78 ? 'smooth' :
+        health > 0.55 ? 'strained' :
+        health > 0.35 ? 'choked' : 'blocked';
+
+      statsEl.textContent =
+        `flow health: ${label} (${(health*100).toFixed(0)}%) • congestion zones: ${jamCount} • peak density: ${maxD.toFixed(2)}`;
+
+      controls.update();
+      composer.render();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Resize
+    ////////////////////////////////////////////////////////////////////////////
+
+    addEventListener('resize', ()=>{
+      renderer.setSize(innerWidth, innerHeight);
+      composer.setSize(innerWidth, innerHeight);
+      camera.aspect = innerWidth/innerHeight;
+      camera.updateProjectionMatrix();
+      bloom.setSize(innerWidth, innerHeight);
+    });
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Start
+    ////////////////////////////////////////////////////////////////////////////
+
+    buildMaze();
+    animate();
+
+  </script>
+</body>
+</html>

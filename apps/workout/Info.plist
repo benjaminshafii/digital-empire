@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Phoneless Workout</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>WKApplication</key>
+	<true/>
+	<key>WKWatchOnly</key>
+	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Voice input lets you log workouts hands-free while exercising.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Speech recognition converts your voice commands into workout data.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Access your workout data to track progress and monitor your fitness metrics.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Save workout sessions to Apple Health to keep all your fitness data in one place.</string>
+</dict>
+</plist>

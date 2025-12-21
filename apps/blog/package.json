@@ -1,0 +1,20 @@
+{
+  "name": "@cool-website/blog",
+  "type": "module",
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "astro": "^5.8.0",
+    "posthog-js": "^1.305.0",
+    "three": "^0.174.0"
+  },
+  "devDependencies": {
+    "@astrojs/tailwind": "^5.1.0",
+    "tailwindcss": "^3.4.0"
+  }
+}
