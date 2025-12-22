@@ -35,6 +35,7 @@ const app = new Hono();
 // === CONFIG MANAGEMENT ===
 
 interface AppConfig {
+  telegramBotToken: string;
   telegramChatId: string;
   location: string;
 }
@@ -52,7 +53,7 @@ function getConfig(): AppConfig {
       // Return defaults on error
     }
   }
-  return { telegramChatId: "", location: "sanfrancisco" };
+  return { telegramBotToken: "", telegramChatId: "", location: "sanfrancisco" };
 }
 
 function saveConfig(config: AppConfig): void {
@@ -60,44 +61,33 @@ function saveConfig(config: AppConfig): void {
   writeFileSync(configPath, JSON.stringify(config, null, 2));
 }
 
+// === TELEGRAM ===
+
+async function sendTelegramMessage(config: AppConfig, message: string): Promise<boolean> {
+  if (!config.telegramBotToken || !config.telegramChatId) return false;
+  
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${config.telegramBotToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: config.telegramChatId,
+        text: message,
+        parse_mode: "HTML",
+      }),
+    });
+    const data = await response.json() as { ok: boolean };
+    return data.ok;
+  } catch {
+    return false;
+  }
+}
+
 // === PROMPT BUILDER ===
 
 function buildPrompt(searchTerm: string, config: AppConfig): string {
-  const hasTelegram = !!config.telegramChatId;
-
-  if (hasTelegram) {
-    // Full flow: search + telegram notification
-    return `@summarize
-
-Search for deals on Facebook Marketplace and send results to Telegram.
-
-## Search Details
-- **Search Term**: ${searchTerm}
-- **Location**: ${config.location}
-
-## Instructions
-
-1. Use @fb-marketplace to search for: "${searchTerm}"
-   - Location: ${config.location}
-   - Find the best deals with direct links
-
-2. Format the top 3-5 deals as a Telegram message:
-   🛒 FB Marketplace: ${searchTerm}
-   
-   1. $XXX - Item Name
-      👉 [link]
-   
-   2. $XXX - Item Name
-      👉 [link]
-
-3. Send the message to Telegram chat: ${config.telegramChatId}
-   Use the telegram MCP send_message tool.
-
-4. Write the full report (all deals found) to: {{reportPath}}
-`;
-  } else {
-    // Simple flow: just search, no telegram
-    return `@fb-marketplace
+  // Always use @fb-marketplace - telegram is handled separately by the server
+  return `@fb-marketplace
 
 Search for deals on Facebook Marketplace.
 
@@ -114,7 +104,6 @@ Write a markdown report with:
 
 Save the report to: {{reportPath}}
 `;
-  }
 }
 
 // === HELPERS ===
@@ -181,7 +170,7 @@ app.get("/", (c) => {
   const searches = listSearches();
   const running = getRunningJob();
 
-  const hasTelegram = !!config.telegramChatId;
+  const hasTelegram = !!(config.telegramBotToken && config.telegramChatId);
 
   const searchesHtml = searches.slice(0, 10).map((search) => {
     const jobs = listJobsForSearch(search.slug);
@@ -261,6 +250,7 @@ app.get("/", (c) => {
 // Settings page
 app.get("/settings", (c) => {
   const config = getConfig();
+  const hasTelegram = !!(config.telegramBotToken && config.telegramChatId);
 
   const content = `
     <div class="max-w-xl">
@@ -287,20 +277,47 @@ app.get("/settings", (c) => {
           </div>
 
           <div class="pt-4 border-t">
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Telegram Chat ID <span class="text-gray-400">(optional)</span>
-            </label>
-            <input 
-              type="text" 
-              name="telegramChatId" 
-              value="${escapeHtml(config.telegramChatId)}"
-              placeholder="-1001234567890"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-            />
-            <p class="text-xs text-gray-500 mt-1">
-              Leave empty to skip Telegram notifications. Results will still be saved to reports.
-              <a href="https://stackoverflow.com/questions/32423837" target="_blank" class="text-blue-600 underline">How to find your chat ID</a>
-            </p>
+            <h3 class="text-sm font-medium text-gray-700 mb-3">Telegram Notifications <span class="text-gray-400">(optional)</span></h3>
+            
+            <div class="space-y-4">
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Bot Token</label>
+                <input 
+                  type="text" 
+                  name="telegramBotToken" 
+                  value="${escapeHtml(config.telegramBotToken)}"
+                  placeholder="123456789:AABBccDDeeFF..."
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm font-mono"
+                />
+                <p class="text-xs text-gray-500 mt-1">
+                  Get from <a href="https://t.me/botfather" target="_blank" class="text-blue-600 underline">@BotFather</a> on Telegram
+                </p>
+              </div>
+              
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Chat ID</label>
+                <input 
+                  type="text" 
+                  name="telegramChatId" 
+                  value="${escapeHtml(config.telegramChatId)}"
+                  placeholder="-1001234567890"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm font-mono"
+                />
+                <p class="text-xs text-gray-500 mt-1">
+                  The group/chat ID where notifications will be sent
+                </p>
+              </div>
+            </div>
+            
+            ${hasTelegram ? `
+              <div class="mt-3">
+                <button type="button" hx-post="/api/test-telegram" hx-target="#telegram-test-result" hx-swap="innerHTML" 
+                  class="text-sm px-3 py-1 border border-gray-300 rounded hover:bg-gray-50">
+                  Test Connection
+                </button>
+                <span id="telegram-test-result" class="ml-2 text-sm"></span>
+              </div>
+            ` : ""}
           </div>
 
           <div class="pt-4 border-t">
@@ -311,20 +328,6 @@ app.get("/settings", (c) => {
         </div>
         <div id="settings-result" class="mt-4"></div>
       </form>
-
-      ${!config.telegramChatId ? "" : `
-      <div class="mt-8 p-4 bg-gray-50 rounded-lg border">
-        <h3 class="font-medium text-gray-900 mb-2">Telegram Setup</h3>
-        <p class="text-sm text-gray-600 mb-2">
-          Make sure you have configured the Telegram MCP server in <code class="bg-gray-200 px-1 rounded">opencode.json</code>:
-        </p>
-        <ul class="text-sm text-gray-600 list-disc pl-5 space-y-1">
-          <li>Get API credentials from <a href="https://my.telegram.org/apps" target="_blank" class="text-blue-600 underline">my.telegram.org/apps</a></li>
-          <li>Set TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_SESSION_STRING in your environment</li>
-          <li>The session string is generated by running the telegram-mcp session generator</li>
-        </ul>
-      </div>
-      `}
 
       <div class="mt-4">
         <a href="/" class="text-blue-600 hover:text-blue-800">&larr; Back to Home</a>
@@ -447,12 +450,24 @@ app.post("/api/search", async (c) => {
 app.post("/api/settings", async (c) => {
   const body = await c.req.parseBody();
   const config: AppConfig = {
+    telegramBotToken: (body.telegramBotToken as string)?.trim() || "",
     telegramChatId: (body.telegramChatId as string)?.trim() || "",
     location: (body.location as string)?.trim() || "sanfrancisco",
   };
 
   saveConfig(config);
   return c.html(`<div class="text-green-600 text-sm">Settings saved!</div>`);
+});
+
+// Test telegram connection
+app.post("/api/test-telegram", async (c) => {
+  const config = getConfig();
+  const sent = await sendTelegramMessage(config, "✅ Test message from Marketplace Tracker");
+  if (sent) {
+    return c.html(`<span class="text-green-600">✓ Sent!</span>`);
+  } else {
+    return c.html(`<span class="text-red-600">✗ Failed</span>`);
+  }
 });
 
 // Run a search
