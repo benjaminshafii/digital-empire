@@ -63,7 +63,11 @@ function saveConfig(config: AppConfig): void {
 // === PROMPT BUILDER ===
 
 function buildPrompt(searchTerm: string, config: AppConfig): string {
-  return `@summarize
+  const hasTelegram = !!config.telegramChatId;
+
+  if (hasTelegram) {
+    // Full flow: search + telegram notification
+    return `@summarize
 
 Search for deals on Facebook Marketplace and send results to Telegram.
 
@@ -91,6 +95,26 @@ Search for deals on Facebook Marketplace and send results to Telegram.
 
 4. Write the full report (all deals found) to: {{reportPath}}
 `;
+  } else {
+    // Simple flow: just search, no telegram
+    return `@fb-marketplace
+
+Search for deals on Facebook Marketplace.
+
+## Search Details
+- **Search Term**: ${searchTerm}
+- **Location**: ${config.location}
+
+Find the best deals matching "${searchTerm}" in ${config.location}.
+
+Write a markdown report with:
+- **Top Picks** (3-5 best deals with direct Facebook links)
+- **Other Options** (table with price, item, link)
+- **What to Avoid** (overpriced or sketchy listings)
+
+Save the report to: {{reportPath}}
+`;
+  }
 }
 
 // === HELPERS ===
@@ -156,9 +180,8 @@ app.get("/", (c) => {
   const config = getConfig();
   const searches = listSearches();
   const running = getRunningJob();
-  const queueState = getQueueState();
 
-  const needsConfig = !config.telegramChatId;
+  const hasTelegram = !!config.telegramChatId;
 
   const searchesHtml = searches.slice(0, 10).map((search) => {
     const jobs = listJobsForSearch(search.slug);
@@ -182,15 +205,6 @@ app.get("/", (c) => {
   }).join("");
 
   const content = `
-    ${needsConfig ? `
-      <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <p class="text-yellow-800">
-          ⚠️ <strong>Setup required:</strong> 
-          <a href="/settings" class="underline">Configure your Telegram settings</a> to receive deal notifications.
-        </p>
-      </div>
-    ` : ""}
-
     ${running ? `
       <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
         <div class="flex items-center gap-3">
@@ -219,14 +233,13 @@ app.get("/", (c) => {
           />
           <button 
             type="submit" 
-            ${needsConfig ? "disabled" : ""}
-            class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:bg-gray-300 disabled:cursor-not-allowed">
+            class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
             Search
           </button>
         </div>
         <p class="text-sm text-gray-500 mt-2">
-          Location: <strong>${escapeHtml(config.location || "Not set")}</strong> · 
-          Results sent to Telegram: <strong>${config.telegramChatId ? "✓" : "Not configured"}</strong>
+          Location: <strong>${escapeHtml(config.location || "sanfrancisco")}</strong>
+          ${hasTelegram ? ` · Telegram: <strong class="text-green-600">✓ enabled</strong>` : ` · <a href="/settings" class="text-blue-600 underline">Enable Telegram notifications</a>`}
         </p>
         <div id="search-result" class="mt-3"></div>
       </form>
@@ -252,13 +265,30 @@ app.get("/settings", (c) => {
   const content = `
     <div class="max-w-xl">
       <h1 class="text-2xl font-bold text-gray-900 mb-2">Settings</h1>
-      <p class="text-gray-600 mb-6">Configure your Telegram notifications and search location.</p>
+      <p class="text-gray-600 mb-6">Configure your search location and optional Telegram notifications.</p>
 
       <form hx-post="/api/settings" hx-target="#settings-result" hx-swap="innerHTML" class="bg-white rounded-xl shadow-sm border p-6">
         <div class="space-y-6">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-              Telegram Chat ID
+              Default Location <span class="text-red-500">*</span>
+            </label>
+            <input 
+              type="text" 
+              name="location" 
+              value="${escapeHtml(config.location || "sanfrancisco")}"
+              placeholder="sanfrancisco"
+              required
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            />
+            <p class="text-xs text-gray-500 mt-1">
+              Facebook Marketplace location (e.g., sanfrancisco, oakland, losangeles, nyc)
+            </p>
+          </div>
+
+          <div class="pt-4 border-t">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Telegram Chat ID <span class="text-gray-400">(optional)</span>
             </label>
             <input 
               type="text" 
@@ -268,24 +298,8 @@ app.get("/settings", (c) => {
               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             />
             <p class="text-xs text-gray-500 mt-1">
-              The group/chat ID where deal notifications will be sent.
+              Leave empty to skip Telegram notifications. Results will still be saved to reports.
               <a href="https://stackoverflow.com/questions/32423837" target="_blank" class="text-blue-600 underline">How to find your chat ID</a>
-            </p>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Default Location
-            </label>
-            <input 
-              type="text" 
-              name="location" 
-              value="${escapeHtml(config.location)}"
-              placeholder="sanfrancisco"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-            />
-            <p class="text-xs text-gray-500 mt-1">
-              Facebook Marketplace location (e.g., sanfrancisco, oakland, losangeles, nyc)
             </p>
           </div>
 
@@ -298,6 +312,7 @@ app.get("/settings", (c) => {
         <div id="settings-result" class="mt-4"></div>
       </form>
 
+      ${!config.telegramChatId ? "" : `
       <div class="mt-8 p-4 bg-gray-50 rounded-lg border">
         <h3 class="font-medium text-gray-900 mb-2">Telegram Setup</h3>
         <p class="text-sm text-gray-600 mb-2">
@@ -309,6 +324,7 @@ app.get("/settings", (c) => {
           <li>The session string is generated by running the telegram-mcp session generator</li>
         </ul>
       </div>
+      `}
 
       <div class="mt-4">
         <a href="/" class="text-blue-600 hover:text-blue-800">&larr; Back to Home</a>
@@ -405,9 +421,6 @@ app.post("/api/search", async (c) => {
   }
 
   const config = getConfig();
-  if (!config.telegramChatId) {
-    return c.html(`<div class="text-red-600 text-sm">Please configure Telegram settings first</div>`, 400);
-  }
 
   // Generate slug from search term
   let slug = slugify(searchTerm);
@@ -416,7 +429,7 @@ app.post("/api/search", async (c) => {
     slug = `${slugify(searchTerm)}-${counter++}`;
   }
 
-  // Create the search with our built prompt
+  // Create the search with our built prompt (works with or without telegram)
   const prompt = buildPrompt(searchTerm, config);
   const search = createSearch({ name: searchTerm, prompt });
 
