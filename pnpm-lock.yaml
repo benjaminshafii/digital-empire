@@ -29,6 +29,9 @@ importers:
 
   apps/marketplace-tracker:
     dependencies:
+      hono:
+        specifier: ^4.0.0
+        version: 4.11.1
       opencode-job-runner:
         specifier: workspace:*
         version: link:../../packages/job-runner

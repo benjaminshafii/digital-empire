@@ -1,19 +1,14 @@
 {
-  "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "exa": {
-      "type": "remote",
-      "url": "https://mcp.exa.ai/mcp?tools=web_search_exa,get_code_context_exa,crawling_exa",
-      "headers": {}
-    },
-    "chrome": {
-      "type": "local",
-      "command": [
-        "bash",
-        "-c",
-        "source ~/.nvm/nvm.sh && npx -y chrome-devtools-mcp@latest"
-      ]
+  "$schema": "https://opencode.ai/schemas/opencode.json",
+  "mcpServers": {
+    "telegram": {
+      "command": "uv",
+      "args": ["--directory", "${HOME}/.opencode/mcp/telegram-mcp", "run", "main.py"],
+      "env": {
+        "TELEGRAM_API_ID": "${TELEGRAM_API_ID}",
+        "TELEGRAM_API_HASH": "${TELEGRAM_API_HASH}",
+        "TELEGRAM_SESSION_STRING": "${TELEGRAM_SESSION_STRING}"
+      }
     }
   }
 }
-

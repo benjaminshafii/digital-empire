@@ -1,136 +1,118 @@
-# mkt - Marketplace Tracker
+# Marketplace Tracker
 
-Facebook Marketplace deal finder built on [`opencode-job-runner`](../../packages/job-runner).
-
-## Install
-
-```bash
-cd apps/marketplace-tracker
-pnpm install
-```
-
-## Quick Start
-
-```bash
-# Create a search
-bun run src/cli.ts add -p "Standing desk under 300, prefer electric"
-
-# Run it (opens in tmux)
-bun run src/cli.ts run standing-desk
-
-# Watch the job
-bun run src/cli.ts run standing-desk --attach
-
-# Check status
-bun run src/cli.ts jobs
-
-# View results
-bun run src/cli.ts show standing-desk
-```
-
-## CLI Commands
-
-```bash
-# Searches
-bun run src/cli.ts add -p "query"       # Create search (FB Marketplace template)
-bun run src/cli.ts add -r -p "prompt"   # Create search (raw prompt, custom agent)
-bun run src/cli.ts list                 # List all searches
-bun run src/cli.ts show <slug>          # View latest report
-bun run src/cli.ts edit <slug>          # Edit the prompt.md file
-bun run src/cli.ts delete <slug>        # Delete a search
-
-# Jobs
-bun run src/cli.ts run <slug>           # Queue and run a search
-bun run src/cli.ts run <slug> --attach  # Run and attach to tmux
-bun run src/cli.ts jobs                 # List recent jobs
-bun run src/cli.ts cancel               # Cancel running job
-
-# Scheduling
-bun run src/cli.ts schedule set <slug> <cron>  # Set cron schedule
-bun run src/cli.ts schedule list               # List scheduled searches
-```
+Simplified FB Marketplace deal finder with Telegram notifications.
 
 ## How It Works
 
-This app is a thin wrapper around `opencode-job-runner`:
+1. **Enter a search term** (e.g., "standing desk under $300")
+2. The app automatically:
+   - Runs `@fb-marketplace` agent to find deals
+   - Sends top results to your Telegram group via `@telegram` MCP
+   - Saves a full report
 
-```typescript
-// src/cli.ts
-import { setDataDir } from "opencode-job-runner";
-setDataDir(join(appDir, "data"));
+## Setup
 
-const { main } = await import("opencode-job-runner/cli");
-main();
+### 1. Configure Telegram MCP
+
+The app uses [telegram-mcp](https://github.com/chigwell/telegram-mcp) to send notifications.
+
+**Get Telegram API credentials:**
+1. Go to [my.telegram.org/apps](https://my.telegram.org/apps)
+2. Create an app to get `API_ID` and `API_HASH`
+3. Clone and set up telegram-mcp:
+   ```bash
+   git clone https://github.com/chigwell/telegram-mcp ~/.opencode/mcp/telegram-mcp
+   cd ~/.opencode/mcp/telegram-mcp
+   uv sync
+   uv run session_string_generator.py  # Follow prompts to get session string
+   ```
+
+**Set environment variables:**
+```bash
+export TELEGRAM_API_ID=your_api_id
+export TELEGRAM_API_HASH=your_api_hash
+export TELEGRAM_SESSION_STRING=your_session_string
 ```
 
-The job-runner handles:
-1. **Searches** - saved as `prompt.md` files with `@fb-marketplace` agent
-2. **Jobs** - run sequentially in tmux sessions via OpenCode
-3. **Queue** - prevents Chrome/browser conflicts
-4. **Reports** - extracted as markdown with clickable links
+### 2. Run the Web UI
 
-## Prompt Format
-
-Each search has a `prompt.md` in `data/searches/<slug>/prompt.md`:
-
-```markdown
-@fb-marketplace
-
-Find deals matching: Standing desk under $300
-
-Location: San Francisco Bay Area
-
-Requirements:
-- Electric/motorized preferred
-- Good condition
-- Local pickup
-
-Write your findings to: {{reportPath}}
+```bash
+cd apps/marketplace-tracker
+bun run src/server.ts
+# Open http://localhost:3456
 ```
 
-- `@fb-marketplace` - specifies the OpenCode agent
-- `{{reportPath}}` - replaced with actual output path at runtime
+### 3. Configure in Settings
 
-## Storage
+1. Click ⚙️ Settings
+2. Enter your **Telegram Chat ID** (the group where notifications go)
+3. Set your **Location** (e.g., `sanfrancisco`, `losangeles`, `nyc`)
+4. Save
+
+### 4. Search!
+
+Enter a search term like "Herman Miller Aeron under $500" and click Search.
+
+The app will:
+- Search FB Marketplace in your location
+- Send top 3-5 deals to your Telegram group
+- Save a full report you can view in the UI
+
+## CLI Usage
+
+You can also use the CLI:
+
+```bash
+# List searches
+bun run src/cli.ts list
+
+# View a report
+bun run src/cli.ts show standing-desk
+
+# Run a search again
+bun run src/cli.ts run standing-desk
+```
+
+## Architecture
 
 ```
-data/
-├── queue.json
-└── searches/
-    └── standing-desk/
-        ├── config.json      # Search metadata
-        ├── prompt.md        # Agent prompt (source of truth)
-        └── jobs/
-            └── <job-id>/
-                ├── job.json   # Job metadata
-                ├── log.txt    # tmux output
-                └── report.md  # Agent findings
+User enters: "standing desk under $300"
+                    │
+                    ▼
+┌─────────────────────────────────────┐
+│  Marketplace Tracker builds prompt  │
+│  with @summarize agent              │
+└─────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────┐
+│  @summarize orchestrates:           │
+│    1. @fb-marketplace → find deals  │
+│    2. @telegram → send notification │
+│    3. Write full report             │
+└─────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────┐
+│  Results:                           │
+│    - Telegram message with top deals│
+│    - Full report in UI              │
+└─────────────────────────────────────┘
 ```
+
+## Files
+
+| File | Purpose |
+|------|---------|
+| `data/config.json` | Telegram chat ID + location |
+| `data/searches/*/prompt.md` | Generated prompts |
+| `data/searches/*/jobs/*/report.md` | Search results |
+| `.opencode/agent/summarize.md` | Glue agent |
+| `opencode.json` | MCP server config |
 
 ## Requirements
 
-- [OpenCode](https://opencode.ai) with `fb-marketplace` agent configured
+- [OpenCode](https://opencode.ai) CLI
 - [tmux](https://github.com/tmux/tmux) for job sessions
 - [Bun](https://bun.sh) runtime
-
-## Report Format
-
-Reports include:
-- **Top Picks** with direct Facebook Marketplace links
-- **Other Options** in table format
-- **What to Avoid** - overpriced or sketchy listings
-- Seller info, condition, price history when available
-
-Example:
-```markdown
-## Top Picks
-
-### 1. [Standing Desk - $150](https://www.facebook.com/marketplace/item/123...)
-- **Seller:** John (15 ratings)
-- **Condition:** Like New
-- **Why it's great:** Electric, height adjustable, was $300 new
-```
-
-## Building Your Own App
-
-Use this as a template! See [`opencode-job-runner`](../../packages/job-runner) for how to build apps with different agents.
+- Telegram account with API credentials

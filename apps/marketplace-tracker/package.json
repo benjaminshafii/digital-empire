@@ -13,7 +13,8 @@
     "typecheck": "bun x tsc --noEmit"
   },
   "dependencies": {
-    "opencode-job-runner": "workspace:*"
+    "opencode-job-runner": "workspace:*",
+    "hono": "^4.0.0"
   },
   "devDependencies": {
     "@types/bun": "latest",
