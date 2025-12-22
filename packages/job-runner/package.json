@@ -14,13 +14,21 @@
     "./cli": {
       "import": "./src/cli/index.ts",
       "types": "./src/cli/index.ts"
+    },
+    "./web": {
+      "import": "./src/web/index.ts",
+      "types": "./src/web/index.ts"
     }
   },
   "scripts": {
     "build": "bun build src/cli/index.ts --compile --outfile dist/ocr",
-    "dev": "bun run src/cli/index.ts"
+    "dev": "bun run src/cli/index.ts",
+    "serve": "bun run src/web/index.ts"
   },
-  "dependencies": {},
+  "dependencies": {
+    "hono": "^4.0.0",
+    "marked": "^12.0.0"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "typescript": "^5.0.0"
