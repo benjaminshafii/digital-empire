@@ -1,6 +1,6 @@
 # mkt - Marketplace Tracker
 
-Facebook Marketplace deal finder built on [`@cool-website/job-runner`](../../packages/job-runner).
+Facebook Marketplace deal finder built on [`opencode-job-runner`](../../packages/job-runner).
 
 ## Install
 
@@ -67,14 +67,14 @@ bun run src/cli.ts schedule list               # List scheduled searches
 
 ## How It Works
 
-This app is a thin wrapper around `@cool-website/job-runner`:
+This app is a thin wrapper around `opencode-job-runner`:
 
 ```typescript
 // src/cli.ts
-import { setDataDir } from "@cool-website/job-runner";
+import { setDataDir } from "opencode-job-runner";
 setDataDir(join(appDir, "data"));
 
-const { main } = await import("@cool-website/job-runner/cli");
+const { main } = await import("opencode-job-runner/cli");
 main();
 ```
 
@@ -148,4 +148,4 @@ Example:
 
 ## Building Your Own App
 
-Use this as a template! See [`@cool-website/job-runner`](../../packages/job-runner) for how to build apps with different agents.
+Use this as a template! See [`opencode-job-runner`](../../packages/job-runner) for how to build apps with different agents.

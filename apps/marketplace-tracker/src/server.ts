@@ -3,8 +3,8 @@
  * Marketplace Tracker Web Server
  */
 import { join, dirname } from "path";
-import { setDataDir } from "@cool-website/job-runner";
-import { createServer } from "@cool-website/job-runner/web";
+import { setDataDir } from "opencode-job-runner";
+import { createServer } from "opencode-job-runner/web";
 
 // Set data directory to ./data relative to this app
 const appDir = dirname(dirname(new URL(import.meta.url).pathname));

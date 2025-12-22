@@ -1,99 +1,79 @@
-# @cool-website/job-runner
+# opencode-job-runner
 
-Generic OpenCode job orchestrator - run and schedule agent jobs with prompt files as the source of truth.
+Run and schedule OpenCode agent jobs from the command line.
 
-## Features
-
-- **Prompt-driven**: Each search has a `prompt.md` file that defines what the agent does
-- **Agent-agnostic**: Use `@agent-name` syntax in prompts to specify any OpenCode agent
-- **Queue system**: Jobs queue up and run sequentially via tmux
-- **Web dashboard**: View searches, jobs, and reports in a browser
-- **Scheduling**: Optional cron-based job scheduling
-
-## Installation
+## Install CLI
 
 ```bash
-pnpm add @cool-website/job-runner
+curl -fsSL https://raw.githubusercontent.com/sst/opencode/main/packages/job-runner/install.sh | bash
 ```
 
-## Quick Start
-
-### 1. Create your app entry points
-
-**CLI (`src/cli.ts`):**
-
-```typescript
-#!/usr/bin/env bun
-import { join, dirname } from "path";
-import { setDataDir } from "@cool-website/job-runner";
-
-// Set data directory relative to your app
-const appDir = dirname(dirname(new URL(import.meta.url).pathname));
-setDataDir(join(appDir, "data"));
-
-// Import and run the CLI
-const { main } = await import("@cool-website/job-runner/cli");
-main();
-```
-
-**Web server (`src/server.ts`):**
-
-```typescript
-#!/usr/bin/env bun
-import { join, dirname } from "path";
-import { setDataDir } from "@cool-website/job-runner";
-import { createServer } from "@cool-website/job-runner/web";
-
-const appDir = dirname(dirname(new URL(import.meta.url).pathname));
-setDataDir(join(appDir, "data"));
-
-export default createServer({
-  port: 3456,
-  scheduler: true,  // Enable cron scheduling
-  name: "My App",   // Dashboard title
-});
-```
-
-### 2. Add a search
+Or build from source:
 
 ```bash
-# Using default FB Marketplace template
-bun run src/cli.ts add -p "Standing desk under 300"
-
-# Using raw prompt mode for custom agents
-bun run src/cli.ts add -r -p "@my-agent Find me the best deals"
+cd packages/job-runner
+bun install
+bun run build
+cp dist/ocr ~/.local/bin/
 ```
 
-### 3. Run jobs
+## Requirements
+
+- [OpenCode](https://opencode.ai) CLI
+- [tmux](https://github.com/tmux/tmux) for job sessions
+- [Bun](https://bun.sh) runtime (for building)
+
+## CLI Usage
 
 ```bash
-# Queue a job for a search
-bun run src/cli.ts run desk
+# Create a job with a prompt
+ocr add -p "Standing desk under 300"
 
-# Attach to running job
-bun run src/cli.ts run desk --attach
+# Create with a specific agent
+ocr add -r -p "@research-agent Find the best productivity apps"
+
+# List all jobs
+ocr list
+
+# Edit a job's prompt
+ocr edit standing-desk
+
+# Run a job
+ocr run standing-desk
+
+# Run and attach to watch live
+ocr run standing-desk --attach
+
+# View the latest report
+ocr show standing-desk
+
+# List recent job runs
+ocr jobs
+
+# Cancel running job
+ocr cancel
 ```
 
-### 4. View results
+## Commands
 
-```bash
-# Start web dashboard
-bun run src/server.ts
-
-# Open http://localhost:3456
-```
+| Command | Description |
+|---------|-------------|
+| `add -p "prompt"` | Create a new job |
+| `add -r -p "prompt"` | Create job with raw prompt (no template) |
+| `list` | List all saved jobs |
+| `show <slug>` | View latest report |
+| `edit <slug>` | Edit the prompt.md file |
+| `run <slug>` | Queue and run a job |
+| `run <slug> --attach` | Run and attach to tmux session |
+| `jobs [slug]` | List job runs |
+| `cancel` | Cancel the running job |
+| `delete <slug>` | Delete a job and its history |
+| `schedule set <slug> <cron>` | Set a cron schedule |
+| `schedule list` | List scheduled jobs |
 
 ## Prompt Files
 
-Each search has a `prompt.md` file in `data/searches/<slug>/prompt.md`. This is the source of truth for what the agent does.
-
-### Variables
-
-- `{{reportPath}}` - Replaced with the actual output file path when running
-
-### Agent Selection
-
-Use `@agent-name` anywhere in your prompt to specify which agent runs the job:
+Each job has a `prompt.md` file that defines what the agent does:
 
 ```markdown
 @fb-marketplace
@@ -105,47 +85,78 @@ Location: San Francisco Bay Area
 Write your findings to: {{reportPath}}
 ```
 
-### Example Prompts
+- **`@agent-name`** - Specifies which OpenCode agent to use
+- **`{{reportPath}}`** - Replaced with actual output path at runtime
 
-**Facebook Marketplace:**
-```markdown
-@fb-marketplace
+## Data Directory
 
-Find: Herman Miller Aeron chair
-Budget: Under $500
-Location: NYC metro area
+By default, data is stored in `./data/`:
 
-Save results to {{reportPath}}
+```
+data/
+├── queue.json
+└── searches/
+    └── standing-desk/
+        ├── config.json      # Job metadata
+        ├── prompt.md        # Agent prompt (source of truth)
+        └── jobs/
+            └── <job-id>/
+                ├── job.json   # Run metadata
+                ├── log.txt    # tmux output
+                └── report.md  # Agent output
 ```
 
-**Custom Research Agent:**
-```markdown
-@research-agent
+---
 
-Research the top 10 productivity apps for developers in 2024.
-Compare pricing, features, and user reviews.
+# SDK
 
-Output a markdown report to {{reportPath}}
+Use the SDK to build custom apps on top of opencode-job-runner.
+
+## Install
+
+```bash
+pnpm add opencode-job-runner
 ```
 
-## CLI Commands
+## Quick Start
 
-| Command | Description |
-|---------|-------------|
-| `add -p "query"` | Create a new search with FB Marketplace template |
-| `add -r -p "prompt"` | Create search with raw prompt (no template) |
-| `list` | List all searches |
-| `show <slug>` | Show search details |
-| `edit <slug>` | Edit the prompt.md file |
-| `run <slug>` | Queue and run a job |
-| `run <slug> --attach` | Run and attach to tmux session |
-| `jobs [slug]` | List jobs (all or for specific search) |
-| `cancel` | Cancel the currently running job |
-| `delete <slug>` | Delete a search and all its jobs |
+**CLI wrapper (`src/cli.ts`):**
+
+```typescript
+#!/usr/bin/env bun
+import { join, dirname } from "path";
+import { setDataDir } from "opencode-job-runner";
+
+// Set data directory relative to your app
+const appDir = dirname(dirname(new URL(import.meta.url).pathname));
+setDataDir(join(appDir, "data"));
+
+// Import and run the CLI
+const { main } = await import("opencode-job-runner/cli");
+main();
+```
+
+**Web server (`src/server.ts`):**
+
+```typescript
+#!/usr/bin/env bun
+import { join, dirname } from "path";
+import { setDataDir } from "opencode-job-runner";
+import { createServer } from "opencode-job-runner/web";
+
+const appDir = dirname(dirname(new URL(import.meta.url).pathname));
+setDataDir(join(appDir, "data"));
+
+export default createServer({
+  port: 3456,
+  scheduler: true,
+  name: "My App",
+});
+```
 
 ## Package Exports
 
-### Core (`@cool-website/job-runner`)
+### Core (`opencode-job-runner`)
 
 ```typescript
 import {
@@ -176,20 +187,20 @@ import {
   startJob,
   cancelJob,
   getRunningJob,
-} from "@cool-website/job-runner";
+} from "opencode-job-runner";
 ```
 
-### CLI (`@cool-website/job-runner/cli`)
+### CLI (`opencode-job-runner/cli`)
 
 ```typescript
-import { main } from "@cool-website/job-runner/cli";
-main(); // Runs the CLI
+import { main } from "opencode-job-runner/cli";
+main();
 ```
 
-### Web (`@cool-website/job-runner/web`)
+### Web (`opencode-job-runner/web`)
 
 ```typescript
-import { createServer } from "@cool-website/job-runner/web";
+import { createServer } from "opencode-job-runner/web";
 
 export default createServer({
   port: 3456,
@@ -198,31 +209,9 @@ export default createServer({
 });
 ```
 
-## Data Directory Structure
-
-```
-data/
-├── searches/
-│   └── <slug>/
-│       ├── config.json    # Search metadata (name, schedule, etc.)
-│       ├── prompt.md      # Agent prompt (source of truth)
-│       └── jobs/
-│           └── <job-id>/
-│               ├── job.json    # Job metadata
-│               ├── log.txt     # tmux output
-│               └── report.md   # Agent output
-└── queue.json             # Job queue state
-```
-
 ## Example App
 
-See [`apps/marketplace-tracker`](../../apps/marketplace-tracker) for a complete example of an app built on this package.
-
-## Requirements
-
-- [Bun](https://bun.sh) runtime
-- [tmux](https://github.com/tmux/tmux) for job execution
-- [OpenCode](https://opencode.ai) CLI installed
+See [`apps/marketplace-tracker`](../../apps/marketplace-tracker) for a complete example of an app built with this SDK.
 
 ## License
 

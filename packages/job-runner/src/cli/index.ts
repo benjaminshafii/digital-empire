@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * mkt - OpenCode Job Runner CLI
+ * ocr - OpenCode Job Runner CLI
  *
  * Run and schedule OpenCode agent jobs
  */
@@ -21,12 +21,12 @@ import { cancelCommand } from "./commands/cancel";
 const VERSION = "0.1.0";
 
 const HELP = `
-mkt - OpenCode Job Runner v${VERSION}
+ocr - OpenCode Job Runner v${VERSION}
 
 Run and schedule OpenCode agent jobs.
 
 USAGE:
-  mkt <command> [options]
+  ocr <command> [options]
 
 COMMANDS:
   add [name]              Create a new job with a prompt
@@ -46,17 +46,17 @@ OPTIONS:
   -v, --version           Show version
 
 EXAMPLES:
-  # Create a FB Marketplace search (default template)
-  mkt add -p "Standing desk under 300"
+  # Create a job with a prompt
+  ocr add -p "Standing desk under 300"
   
-  # Create a raw prompt with any agents
-  mkt add -r -p "@my-agent Do something"
+  # Create with a specific agent
+  ocr add -r -p "@my-agent Do something"
   
   # Edit the prompt
-  mkt edit standing-desk
+  ocr edit standing-desk
   
   # Run and watch
-  mkt run standing-desk --attach
+  ocr run standing-desk --attach
 
 For more info: https://github.com/sst/opencode
 `;

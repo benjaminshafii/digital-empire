@@ -29,7 +29,7 @@ importers:
 
   apps/marketplace-tracker:
     dependencies:
-      '@cool-website/job-runner':
+      opencode-job-runner:
         specifier: workspace:*
         version: link:../../packages/job-runner
     devDependencies:

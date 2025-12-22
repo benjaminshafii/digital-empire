@@ -1,7 +1,7 @@
 {
   "name": "@cool-website/marketplace-tracker",
   "version": "0.1.0",
-  "description": "Facebook Marketplace deal finder - built on @cool-website/job-runner",
+  "description": "Facebook Marketplace deal finder - built on opencode-job-runner",
   "type": "module",
   "bin": {
     "mkt": "./src/cli.ts"
@@ -13,7 +13,7 @@
     "typecheck": "bun x tsc --noEmit"
   },
   "dependencies": {
-    "@cool-website/job-runner": "workspace:*"
+    "opencode-job-runner": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "latest",

@@ -1,5 +1,5 @@
 /**
- * @cool-website/job-runner core
+ * opencode-job-runner core
  */
 
 // Types

@@ -1,8 +1,11 @@
 {
-  "name": "@cool-website/job-runner",
+  "name": "opencode-job-runner",
   "version": "0.1.0",
-  "description": "Generic OpenCode job orchestrator - run and schedule agent jobs",
+  "description": "CLI and SDK for running and scheduling OpenCode agent jobs",
   "type": "module",
+  "bin": {
+    "ocr": "./src/cli/index.ts"
+  },
   "exports": {
     ".": {
       "import": "./src/core/index.ts",
@@ -18,7 +21,7 @@
     }
   },
   "scripts": {
-    "build": "bun build src/cli/index.ts --compile --outfile dist/job-runner",
+    "build": "bun build src/cli/index.ts --compile --outfile dist/ocr",
     "dev": "bun run src/cli/index.ts",
     "serve": "bun run src/web/index.ts"
   },
