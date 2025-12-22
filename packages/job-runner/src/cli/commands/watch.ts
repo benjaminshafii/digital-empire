@@ -5,7 +5,7 @@ import {
   listTmuxSessions,
   tmuxSessionExists,
   getTmuxSessionName,
-} from "../../core";
+} from "../../core/index";
 
 export async function watchCommand(args: string[]) {
   const { values, positionals } = parseArgs({

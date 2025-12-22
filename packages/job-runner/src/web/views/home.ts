@@ -1,5 +1,5 @@
 /**
- * Home page - list all searches with schedule info
+ * Home page - list all jobs with schedule info
  */
 import type { Search, Job } from "../../core/types";
 
@@ -7,6 +7,7 @@ interface SearchWithStatus extends Search {
   lastJob?: Job;
   jobCount: number;
   nextRun?: string; // "in 2h 15m" or null
+  promptPreview?: string; // First line of prompt.md
 }
 
 interface HomePageData {
@@ -23,12 +24,12 @@ export function homePage(data: HomePageData | SearchWithStatus[]): string {
   if (searches.length === 0) {
     return `
       <div class="text-center py-12">
-        <span class="text-6xl mb-4 block">🔍</span>
-        <h2 class="text-xl font-semibold text-gray-900 mb-2">No searches yet</h2>
-        <p class="text-gray-600 mb-6">Create your first search to start finding deals.</p>
+        <span class="text-6xl mb-4 block">🤖</span>
+        <h2 class="text-xl font-semibold text-gray-900 mb-2">No jobs yet</h2>
+        <p class="text-gray-600 mb-6">Create your first job to start running OpenCode agents.</p>
         <a href="/add" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
           <span class="text-xl">+</span>
-          Add Your First Search
+          Add Your First Job
         </a>
       </div>
     `;
@@ -50,10 +51,9 @@ export function homePage(data: HomePageData | SearchWithStatus[]): string {
           <h3 class="text-lg font-semibold text-gray-900">${escapeHtml(search.name)}</h3>
           ${statusBadge}
         </div>
-        <p class="text-gray-600 text-sm mb-3 line-clamp-2">${escapeHtml(search.prompt)}</p>
+        <p class="text-gray-600 text-sm mb-3 line-clamp-2 font-mono">${escapeHtml(search.promptPreview || "...")}</p>
         
         <div class="flex justify-between items-center text-xs text-gray-500 mb-2">
-          <span>📍 ${escapeHtml(search.location)}</span>
           <span>Last: ${lastRunText}</span>
         </div>
         
@@ -130,9 +130,9 @@ export function homePage(data: HomePageData | SearchWithStatus[]): string {
   return `
     <div class="mb-6 flex justify-between items-start">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900 mb-1">Marketplace Tracker</h1>
+        <h1 class="text-2xl font-bold text-gray-900 mb-1">Job Runner</h1>
         <p class="text-gray-600 text-sm">
-          ${searches.length} search${searches.length !== 1 ? "es" : ""}
+          ${searches.length} job${searches.length !== 1 ? "s" : ""}
           ${scheduledCount > 0 ? ` · ${scheduledCount} scheduled` : ""}
         </p>
       </div>
@@ -222,8 +222,8 @@ export function addSearchForm(): string {
     </div>
 
     <div class="max-w-2xl">
-      <h1 class="text-2xl font-bold text-gray-900 mb-2">Add Search</h1>
-      <p class="text-gray-600 mb-6">What are you looking for on Facebook Marketplace?</p>
+      <h1 class="text-2xl font-bold text-gray-900 mb-2">Add Job</h1>
+      <p class="text-gray-600 mb-6">Create a prompt for OpenCode to run.</p>
       
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <form hx-post="/api/search" hx-target="#form-errors" hx-swap="innerHTML">
@@ -231,29 +231,29 @@ export function addSearchForm(): string {
 
           <div class="mb-4">
             <label for="prompt" class="block text-sm font-medium text-gray-700 mb-1">
-              Describe what you want
+              Prompt
             </label>
             <textarea 
               id="prompt" 
               name="prompt" 
               required
-              rows="3"
-              placeholder="Standing desk under $300, prefer electric. Uplift, Jarvis, or IKEA Bekant."
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-            ></textarea>
-          </div>
+              rows="8"
+              placeholder="@fb-marketplace Find deals on Facebook Marketplace.
 
-          <div class="mb-6">
-            <label for="location" class="block text-sm font-medium text-gray-700 mb-1">
-              Location
-            </label>
-            <input 
-              type="text" 
-              id="location" 
-              name="location" 
-              value="San Francisco"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-            />
+SEARCH: Standing desk under $300
+LOCATION: San Francisco
+
+Write a markdown report with:
+- **Top Picks** (3-5 best deals with links)
+- **Other Options** (table: price, item, link)
+
+Save the report to: {{reportPath}}"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none font-mono text-sm"
+            ></textarea>
+            <p class="text-xs text-gray-500 mt-2">
+              Use <code class="bg-gray-100 px-1 rounded">@agent-name</code> to invoke agents. 
+              Use <code class="bg-gray-100 px-1 rounded">{{reportPath}}</code> for the output file path.
+            </p>
           </div>
 
           <div class="flex gap-3">
@@ -265,6 +265,17 @@ export function addSearchForm(): string {
             </a>
           </div>
         </form>
+      </div>
+      
+      <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <h3 class="font-medium text-gray-900 mb-2">Example: FB Marketplace Search</h3>
+        <pre class="text-xs text-gray-600 overflow-x-auto">@fb-marketplace Find deals on Facebook Marketplace.
+
+SEARCH: Herman Miller Aeron chair
+LOCATION: San Francisco Bay Area
+
+Write a markdown report with top picks and links.
+Save the report to: {{reportPath}}</pre>
       </div>
     </div>
   `;

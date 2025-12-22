@@ -1,5 +1,5 @@
 import { parseArgs } from "util";
-import { cancelJob, listAllJobs, getRunningJob, deleteJob } from "../../core";
+import { cancelJob, listAllJobs, getRunningJob, deleteJob } from "../../core/index";
 import { clearQueue, getQueueState, listJobsForSearch } from "../../core/job-store";
 import { listSearches } from "../../core/search-store";
 

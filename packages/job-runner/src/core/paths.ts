@@ -1,60 +1,79 @@
 /**
  * File paths and directory structure
  * 
- * Data is stored in the colocated `data/` folder by default.
- * Can be overridden with MKT_DATA_DIR environment variable.
+ * Data directory must be configured by the app using setDataDir()
+ * or via JOB_RUNNER_DATA_DIR environment variable.
  */
 import { homedir } from "os";
-import { join, dirname } from "path";
+import { join } from "path";
 import { existsSync, mkdirSync } from "fs";
 
-// Find the package root (where package.json is)
-function findPackageRoot(): string {
-  // Start from this file's location and walk up
-  let dir = dirname(new URL(import.meta.url).pathname);
-  const root = "/";
+// Configurable data directory
+let _dataDir: string | null = null;
 
-  while (dir !== root) {
-    if (existsSync(join(dir, "package.json"))) {
-      return dir;
-    }
-    dir = dirname(dir);
-  }
-
-  // Fallback to known location
-  const fallback = join(homedir(), "git", "personal", "cool-website", "apps", "marketplace-tracker");
-  if (existsSync(join(fallback, "package.json"))) {
-    return fallback;
-  }
-
-  return process.cwd();
+/**
+ * Set the data directory for job-runner.
+ * Must be called before using any other functions.
+ */
+export function setDataDir(dir: string): void {
+  _dataDir = dir;
+  ensureDataDirs();
 }
 
-// Base data directory - colocated in the repo
-function getDataDir(): string {
+/**
+ * Get the current data directory.
+ * Throws if not configured.
+ */
+export function getDataDir(): string {
+  if (_dataDir) return _dataDir;
+  
   // Allow override via env var
-  if (process.env.MKT_DATA_DIR) {
-    return process.env.MKT_DATA_DIR;
+  if (process.env.JOB_RUNNER_DATA_DIR) {
+    _dataDir = process.env.JOB_RUNNER_DATA_DIR;
+    return _dataDir;
   }
   
-  // Default to ./data relative to package root
-  return join(findPackageRoot(), "data");
+  throw new Error(
+    "Data directory not configured. Call setDataDir() or set JOB_RUNNER_DATA_DIR environment variable."
+  );
 }
 
-export const DATA_DIR = getDataDir();
-export const SEARCHES_DIR = join(DATA_DIR, "searches");
-export const QUEUE_FILE = join(DATA_DIR, "queue.json");
+// Computed paths (call getDataDir() each time to ensure it's set)
+export function getSearchesDir(): string {
+  return join(getDataDir(), "searches");
+}
+
+export function getQueueFile(): string {
+  return join(getDataDir(), "queue.json");
+}
+
+// Legacy exports for backwards compatibility
+export const DATA_DIR = new Proxy({} as { toString: () => string }, {
+  get: () => getDataDir(),
+});
+
+export const SEARCHES_DIR = new Proxy({} as { toString: () => string }, {
+  get: () => getSearchesDir(),
+});
+
+export const QUEUE_FILE = new Proxy({} as { toString: () => string }, {
+  get: () => getQueueFile(),
+});
 
 // Legacy alias for backwards compatibility
 export const CONFIG_DIR = DATA_DIR;
 
 // Search-specific paths
 export function getSearchDir(slug: string): string {
-  return join(SEARCHES_DIR, slug);
+  return join(getSearchesDir(), slug);
 }
 
 export function getSearchConfigPath(slug: string): string {
   return join(getSearchDir(slug), "config.json");
+}
+
+export function getSearchPromptPath(slug: string): string {
+  return join(getSearchDir(slug), "prompt.md");
 }
 
 export function getSearchJobsDir(slug: string): string {
@@ -86,8 +105,9 @@ export function ensureDir(dir: string): void {
 }
 
 export function ensureDataDirs(): void {
-  ensureDir(DATA_DIR);
-  ensureDir(SEARCHES_DIR);
+  const dataDir = getDataDir();
+  ensureDir(dataDir);
+  ensureDir(join(dataDir, "searches"));
 }
 
 // Legacy alias

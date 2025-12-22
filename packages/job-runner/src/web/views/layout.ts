@@ -8,7 +8,7 @@ export function layout(title: string, content: string): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title} - Marketplace Tracker</title>
+  <title>${title} - Job Runner</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
   <style>
@@ -43,8 +43,8 @@ export function layout(title: string, content: string): string {
         <div class="flex h-16 justify-between items-center">
           <div class="flex items-center">
             <a href="/" class="flex items-center gap-2">
-              <span class="text-2xl">🛒</span>
-              <span class="font-semibold text-gray-900">Marketplace Tracker</span>
+              <span class="text-2xl">🤖</span>
+              <span class="font-semibold text-gray-900">Job Runner</span>
             </a>
           </div>
           <div class="flex items-center gap-4">

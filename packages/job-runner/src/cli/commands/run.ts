@@ -5,7 +5,8 @@ import {
   startJob,
   attachToJob,
   isTmuxAvailable,
-} from "../../core";
+  getPrompt,
+} from "../../core/index";
 
 export async function runCommand(args: string[]) {
   const { values, positionals } = parseArgs({
@@ -22,11 +23,11 @@ export async function runCommand(args: string[]) {
     console.log(`
 Usage: mkt run <slug> [options]
 
-Run a marketplace search.
+Run a job.
 
 Options:
   -a, --attach    Attach to tmux session to watch live
-  --all           Run all searches (sequentially)
+  --all           Run all jobs (sequentially)
   -h, --help      Show help
 
 Examples:
@@ -45,11 +46,11 @@ Examples:
   if (values.all) {
     const searches = listSearches();
     if (searches.length === 0) {
-      console.log("No searches to run.");
+      console.log("No jobs to run.");
       return;
     }
 
-    console.log(`Queueing ${searches.length} searches...`);
+    console.log(`Queueing ${searches.length} jobs...`);
 
     for (const search of searches) {
       try {
@@ -67,25 +68,27 @@ Examples:
     return;
   }
 
-  // Single search
+  // Single job
   if (positionals.length === 0) {
-    throw new Error("Please specify a search slug. Run 'mkt list' to see available searches.");
+    throw new Error("Please specify a job slug. Run 'mkt list' to see available jobs.");
   }
 
   const slug = positionals[0];
   const search = getSearch(slug);
   if (!search) {
-    console.error(`Error: Search "${slug}" not found`);
-    console.log("\nAvailable searches:");
+    console.error(`Error: Job "${slug}" not found`);
+    console.log("\nAvailable jobs:");
     for (const s of listSearches()) {
       console.log(`  ${s.slug}`);
     }
     process.exit(1);
   }
 
-  console.log(`Starting search: ${search.name}`);
-  console.log(`  Looking for: ${search.prompt.substring(0, 60)}...`);
-  console.log(`  Location: ${search.location}`);
+  const prompt = getPrompt(slug);
+  const promptPreview = prompt?.split("\n")[0] || "...";
+
+  console.log(`Starting job: ${search.name}`);
+  console.log(`  Prompt: ${promptPreview.substring(0, 60)}...`);
   console.log("");
 
   const job = await startJob(slug, {

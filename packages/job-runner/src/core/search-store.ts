@@ -1,12 +1,17 @@
 /**
  * SearchStore - CRUD operations for saved searches
+ *
+ * Each search has:
+ * - config.json: metadata (name, schedule, timestamps)
+ * - prompt.md: the actual prompt to run (user-editable)
  */
 import { readFileSync, writeFileSync, existsSync, readdirSync, rmSync } from "fs";
 import type { Search, CreateSearchOptions } from "./types";
 import {
-  SEARCHES_DIR,
+  getSearchesDir,
   getSearchDir,
   getSearchConfigPath,
+  getSearchPromptPath,
   ensureDir,
   ensureConfigDirs,
 } from "./paths";
@@ -36,13 +41,15 @@ export function createSearch(options: CreateSearchOptions): Search {
   const search: Search = {
     slug,
     name: options.name,
-    prompt: options.prompt,
-    location: options.location || "San Francisco",
     schedule: options.schedule,
     createdAt: new Date().toISOString(),
   };
 
+  // Write config.json (metadata only)
   writeFileSync(getSearchConfigPath(slug), JSON.stringify(search, null, 2));
+
+  // Write prompt.md (the actual prompt content)
+  writeFileSync(getSearchPromptPath(slug), options.prompt);
 
   return search;
 }
@@ -66,13 +73,14 @@ export function getSearch(slug: string): Search | null {
 export function listSearches(): Search[] {
   ensureConfigDirs();
 
-  if (!existsSync(SEARCHES_DIR)) {
+  const searchesDir = getSearchesDir();
+  if (!existsSync(searchesDir)) {
     return [];
   }
 
   const searches: Search[] = [];
 
-  for (const slug of readdirSync(SEARCHES_DIR)) {
+  for (const slug of readdirSync(searchesDir)) {
     const search = getSearch(slug);
     if (search) {
       searches.push(search);
@@ -118,4 +126,33 @@ export function deleteSearch(slug: string): void {
 // Check if a search exists
 export function searchExists(slug: string): boolean {
   return existsSync(getSearchConfigPath(slug));
+}
+
+// Get the prompt content for a search
+export function getPrompt(slug: string): string | null {
+  const promptPath = getSearchPromptPath(slug);
+
+  if (!existsSync(promptPath)) {
+    return null;
+  }
+
+  try {
+    return readFileSync(promptPath, "utf-8");
+  } catch {
+    return null;
+  }
+}
+
+// Update the prompt content for a search
+export function updatePrompt(slug: string, content: string): void {
+  const search = getSearch(slug);
+
+  if (!search) {
+    throw new Error(`Search "${slug}" not found`);
+  }
+
+  writeFileSync(getSearchPromptPath(slug), content);
+
+  // Update the updatedAt timestamp in config
+  updateSearch(slug, {});
 }

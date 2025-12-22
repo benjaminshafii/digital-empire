@@ -1,6 +1,6 @@
 import { parseArgs } from "util";
 import { createInterface } from "readline";
-import { deleteSearch, getSearch, listSearches } from "../../core";
+import { deleteSearch, getSearch, listSearches } from "../../core/index";
 
 export async function deleteCommand(args: string[]) {
   const { values, positionals } = parseArgs({

@@ -1,5 +1,5 @@
 import { parseArgs } from "util";
-import { listSearches, getLatestJob } from "../../core";
+import { listSearches, getLatestJob, getPrompt } from "../../core/index";
 
 export async function listCommand(args: string[]) {
   const { values } = parseArgs({
@@ -14,7 +14,7 @@ export async function listCommand(args: string[]) {
     console.log(`
 Usage: mkt list [options]
 
-List all saved searches.
+List all saved jobs.
 
 Options:
   -j, --json    Output as JSON
@@ -26,16 +26,18 @@ Options:
   const searches = listSearches();
 
   if (searches.length === 0) {
-    console.log("No searches yet.");
-    console.log('Create one with: mkt add "search name"');
+    console.log("No jobs yet.");
+    console.log('Create one with: mkt add -p "your prompt"');
     return;
   }
 
   if (values.json) {
     const output = searches.map((s) => {
       const latestJob = getLatestJob(s.slug);
+      const prompt = getPrompt(s.slug);
       return {
         ...s,
+        promptPreview: prompt?.split("\n")[0] || "",
         lastRun: latestJob?.completedAt,
         lastStatus: latestJob?.status,
       };
@@ -48,19 +50,20 @@ Options:
   console.log("");
   console.log(
     "NAME".padEnd(25) +
-      "LOCATION".padEnd(18) +
-      "SCHEDULE".padEnd(15) +
+      "SCHEDULE".padEnd(12) +
       "LAST RUN".padEnd(15) +
-      "STATUS"
+      "STATUS".padEnd(10) +
+      "PROMPT"
   );
-  console.log("-".repeat(85));
+  console.log("-".repeat(90));
 
   for (const search of searches) {
     const latestJob = getLatestJob(search.slug);
+    const prompt = getPrompt(search.slug);
+    const promptPreview = (prompt?.split("\n")[0] || "").substring(0, 25);
 
     const name = search.name.substring(0, 23).padEnd(25);
-    const location = search.location.substring(0, 16).padEnd(18);
-    const schedule = (search.schedule || "-").padEnd(15);
+    const schedule = (search.schedule || "-").padEnd(12);
 
     let lastRun = "-";
     let status = "-";
@@ -89,7 +92,7 @@ Options:
             : latestJob.status;
     }
 
-    console.log(name + location + schedule + lastRun.padEnd(15) + status);
+    console.log(name + schedule + lastRun.padEnd(15) + status.padEnd(10) + promptPreview);
   }
 
   console.log("");

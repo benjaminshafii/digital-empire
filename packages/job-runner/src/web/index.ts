@@ -16,6 +16,8 @@ import {
   slugify,
   searchExists,
   updateSearch,
+  getPrompt,
+  updatePrompt,
   listJobsForSearch,
   getJob,
   getJobReport,
@@ -36,7 +38,8 @@ import {
 } from "../core";
 import type { Search } from "../core/types";
 
-ensureDataDirs();
+// Note: ensureDataDirs() is called in createServer(), not at module load time
+// This allows apps to call setDataDir() before importing this module
 
 const app = new Hono();
 
@@ -82,10 +85,14 @@ app.get("/", (c) => {
 
   const searchesWithStatus = searches.map((search) => {
     const jobs = listJobsForSearch(search.slug);
+    const prompt = getPrompt(search.slug);
+    // Get first non-empty line as preview
+    const promptPreview = prompt?.split("\n").find((l) => l.trim()) || "...";
     return {
       ...search,
       lastJob: jobs[0],
       jobCount: jobs.filter((j) => j.status === "completed").length,
+      promptPreview,
     };
   });
 
@@ -103,14 +110,15 @@ app.get("/search/:slug", (c) => {
   const search = getSearch(slug);
   if (!search) {
     return c.html(layout("Not Found", `<div class="text-center py-12">
-      <h1 class="text-2xl font-bold mb-4">Search not found</h1>
+      <h1 class="text-2xl font-bold mb-4">Job not found</h1>
       <a href="/" class="text-blue-600">Back</a>
     </div>`), 404);
   }
 
   const jobs = listJobsForSearch(slug);
   const runningJob = jobs.find((j) => j.status === "running");
-  return c.html(layout(search.name, searchPage({ search, jobs, runningJob })));
+  const prompt = getPrompt(slug);
+  return c.html(layout(search.name, searchPage({ search, jobs, runningJob, prompt: prompt || undefined })));
 });
 
 app.get("/search/:slug/:jobId", (c) => {
@@ -163,16 +171,15 @@ app.post("/api/search", async (c) => {
   try {
     const body = await c.req.parseBody();
     const prompt = body.prompt as string;
-    const location = (body.location as string) || "San Francisco";
 
-    if (!prompt) return c.html(`<div class="text-red-600">Describe what you're looking for</div>`, 400);
+    if (!prompt) return c.html(`<div class="text-red-600">Prompt is required</div>`, 400);
 
     const name = await generateNameFromPrompt(prompt);
     let slug = slugify(name);
     let counter = 2;
     while (searchExists(slug)) slug = `${slugify(name)}-${counter++}`;
 
-    const search = createSearch({ name: counter > 2 ? `${name} ${counter - 1}` : name, prompt, location });
+    const search = createSearch({ name: counter > 2 ? `${name} ${counter - 1}` : name, prompt });
     c.header("HX-Redirect", `/search/${search.slug}`);
     return c.html(`<div>Created!</div>`);
   } catch (error) {
@@ -202,6 +209,32 @@ app.post("/api/search/:slug/schedule", async (c) => {
     updateSearch(slug, { schedule: schedule || undefined });
     c.header("HX-Refresh", "true");
     return c.html(`<div>Schedule updated</div>`);
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : "Unknown" }, 500);
+  }
+});
+
+// Prompt endpoints
+app.get("/api/search/:slug/prompt", (c) => {
+  const slug = c.req.param("slug");
+  const prompt = getPrompt(slug);
+  if (!prompt) return c.text("Not found", 404);
+  return c.text(prompt, 200, { "Content-Type": "text/markdown" });
+});
+
+app.post("/api/search/:slug/prompt", async (c) => {
+  const slug = c.req.param("slug");
+  const body = await c.req.parseBody();
+  const prompt = body.prompt as string;
+
+  if (!prompt) {
+    return c.json({ error: "Prompt content required" }, 400);
+  }
+
+  try {
+    updatePrompt(slug, prompt);
+    c.header("HX-Refresh", "true");
+    return c.html(`<div>Prompt saved</div>`);
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : "Unknown" }, 500);
   }
@@ -352,15 +385,28 @@ function startScheduler() {
 
 // === SERVER ===
 
-const port = parseInt(process.env.PORT || "3456");
-const enableScheduler = process.env.SCHEDULER !== "false";
+export function createServer(options: { port?: number; scheduler?: boolean; name?: string } = {}) {
+  // Ensure data directories exist
+  ensureDataDirs();
+  
+  const port = options.port ?? parseInt(process.env.PORT || "3456");
+  const enableScheduler = options.scheduler ?? process.env.SCHEDULER !== "false";
+  const name = options.name ?? "Job Runner";
 
-if (enableScheduler) startScheduler();
+  if (enableScheduler) startScheduler();
 
-console.log(`
-Marketplace Tracker
+  console.log(`
+${name}
   http://localhost:${port}
   Scheduler: ${enableScheduler ? "on" : "off"}
 `);
 
-export default { port, fetch: app.fetch };
+  return { port, fetch: app.fetch };
+}
+
+// Export app for direct usage if needed
+export { app };
+
+// Default export that can be used by Bun.serve
+// Note: if using this default, setDataDir must be called before import
+export default { port: 3456, fetch: app.fetch };

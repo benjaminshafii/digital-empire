@@ -1,5 +1,5 @@
 import { parseArgs } from "util";
-import { listAllJobs, getQueueState, getRunningJob } from "../../core";
+import { listAllJobs, getQueueState, getRunningJob } from "../../core/index";
 
 export async function jobsCommand(args: string[]) {
   const { values } = parseArgs({

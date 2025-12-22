@@ -5,7 +5,7 @@ import {
   getJobReport,
   getJobLog,
   listSearches,
-} from "../../core";
+} from "../../core/index";
 
 export async function showCommand(args: string[]) {
   const { values, positionals } = parseArgs({

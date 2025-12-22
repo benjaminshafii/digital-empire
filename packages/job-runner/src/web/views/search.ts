@@ -1,5 +1,5 @@
 /**
- * Search detail page with schedule editor
+ * Job detail page with prompt editor and schedule
  */
 import type { Search, Job } from "../../core/types";
 
@@ -7,10 +7,11 @@ interface SearchPageData {
   search: Search;
   jobs: Job[];
   runningJob?: Job;
+  prompt?: string; // The prompt.md content
 }
 
 export function searchPage(data: SearchPageData): string {
-  const { search, jobs, runningJob } = data;
+  const { search, jobs, runningJob, prompt } = data;
 
   // Calculate next run if scheduled
   const nextRunInfo = search.schedule ? getNextRunInfo(search, jobs) : null;
@@ -68,14 +69,10 @@ export function searchPage(data: SearchPageData): string {
       <a href="/" class="text-blue-600 hover:text-blue-800 text-sm">&larr; Back</a>
     </div>
 
-    <!-- Search Info -->
+    <!-- Job Info -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
       <div class="flex justify-between items-start mb-4">
-        <div class="flex-1">
-          <h1 class="text-2xl font-bold text-gray-900 mb-2">${escapeHtml(search.name)}</h1>
-          <p class="text-gray-600">${escapeHtml(search.prompt)}</p>
-          <p class="text-sm text-gray-500 mt-2">📍 ${escapeHtml(search.location)}</p>
-        </div>
+        <h1 class="text-2xl font-bold text-gray-900">${escapeHtml(search.name)}</h1>
         <button 
           hx-post="/api/search/${search.slug}/run"
           hx-swap="none"
@@ -84,6 +81,41 @@ export function searchPage(data: SearchPageData): string {
           ${runningJob ? "disabled" : ""}>
           Run Now
         </button>
+      </div>
+
+      <!-- Prompt Section -->
+      <div class="mb-4">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-sm font-medium text-gray-700">Prompt</h3>
+          <button 
+            onclick="document.getElementById('prompt-editor').classList.toggle('hidden'); document.getElementById('prompt-display').classList.toggle('hidden')"
+            class="text-sm text-blue-600 hover:text-blue-800">
+            Edit
+          </button>
+        </div>
+        <pre id="prompt-display" class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm font-mono text-gray-700 whitespace-pre-wrap overflow-x-auto">${escapeHtml(prompt || "No prompt found")}</pre>
+        <form id="prompt-editor" class="hidden" hx-post="/api/search/${search.slug}/prompt" hx-swap="none">
+          <textarea 
+            name="prompt" 
+            rows="10" 
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono text-sm"
+          >${escapeHtml(prompt || "")}</textarea>
+          <div class="flex gap-2 mt-2">
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+              Save Prompt
+            </button>
+            <button 
+              type="button"
+              onclick="document.getElementById('prompt-editor').classList.add('hidden'); document.getElementById('prompt-display').classList.remove('hidden')"
+              class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm">
+              Cancel
+            </button>
+          </div>
+          <p class="text-xs text-gray-500 mt-2">
+            Use <code class="bg-gray-100 px-1 rounded">@agent-name</code> to invoke agents. 
+            Use <code class="bg-gray-100 px-1 rounded">{{reportPath}}</code> for the output file path.
+          </p>
+        </form>
       </div>
 
       <!-- Schedule Section -->
@@ -95,7 +127,7 @@ export function searchPage(data: SearchPageData): string {
               search.schedule
                 ? `
               <div class="flex items-center gap-2">
-                <span class="px-2 py-1 bg-purple-100 text-purple-700 rounded text-sm">⏰ Every ${escapeHtml(search.schedule)}</span>
+                <span class="px-2 py-1 bg-purple-100 text-purple-700 rounded text-sm">Every ${escapeHtml(search.schedule)}</span>
                 ${nextRunInfo ? `<span class="text-sm text-gray-500">${nextRunInfo}</span>` : ""}
               </div>
             `

@@ -7,7 +7,7 @@ import {
   tmuxSessionExists,
   getTmuxSessionName,
   getJobReportPath,
-} from "../../core";
+} from "../../core/index";
 
 export async function syncCommand(args: string[]) {
   console.log("Syncing job statuses...\n");

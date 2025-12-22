@@ -1,14 +1,16 @@
 /**
- * JobRunner - Simple pipeline: Search → tmux → opencode → report.md
+ * JobRunner - Generic OpenCode job orchestrator
  *
- * Key: opencode writes report directly to report.md file
- * No log parsing needed - just check if report.md exists
+ * Pipeline: prompt.md → tmux → opencode run → report.md
+ *
+ * The prompt.md file is the source of truth. It can reference any agents
+ * via @agent syntax. We just read it and pass it to `opencode run`.
  */
 import { execSync, spawnSync } from "child_process";
 import { existsSync, writeFileSync, readFileSync, readdirSync } from "fs";
 import { join } from "path";
-import type { Job, Search, RunJobOptions } from "./types";
-import { getSearch } from "./search-store";
+import type { Job, RunJobOptions } from "./types";
+import { getSearch, getPrompt } from "./search-store";
 import {
   createJob,
   updateJob,
@@ -18,19 +20,17 @@ import {
   setCurrentJob,
   getQueueState,
   getNextQueuedJob,
-  listJobsForSearch,
-  getJobReport,
 } from "./job-store";
 import {
+  getSearchesDir,
   getJobDir,
   getJobLogPath,
   getJobReportPath,
   findOpencodeBinary,
   findProjectRoot,
-  SEARCHES_DIR,
 } from "./paths";
 
-const TMUX_PREFIX = "mkt";
+const TMUX_PREFIX = "job";
 
 // === TMUX HELPERS ===
 
@@ -69,70 +69,14 @@ export function getAttachCommand(jobId: string): string {
   return `tmux attach -t ${getTmuxSessionName(jobId)}`;
 }
 
-// === PROMPT BUILDING ===
+// === PROMPT PROCESSING ===
 
-function getPreviousReports(searchSlug: string, limit = 2): string[] {
-  const jobs = listJobsForSearch(searchSlug);
-  const completedJobs = jobs.filter((j) => j.status === "completed").slice(0, limit);
-
-  const reports: string[] = [];
-  for (const job of completedJobs) {
-    const report = getJobReport(searchSlug, job.id);
-    if (report) {
-      const date = new Date(job.completedAt || job.createdAt).toLocaleDateString();
-      reports.push(`--- Report from ${date} ---\n${report.substring(0, 1500)}`);
-    }
-  }
-  return reports;
-}
-
-function buildPrompt(search: Search, reportPath: string): string {
-  const previousReports = getPreviousReports(search.slug);
-  const today = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  let prompt = `Find deals on Facebook Marketplace.
-
-TODAY: ${today}
-LOCATION: ${search.location}
-
-SEARCH: ${search.prompt}
-
-`;
-
-  if (previousReports.length > 0) {
-    prompt += `PREVIOUS REPORTS (compare for new/sold items):
-${previousReports.join("\n\n")}
-
-`;
-  }
-
-  prompt += `INSTRUCTIONS:
-1. Search Facebook Marketplace for relevant items
-2. Write a markdown report with:
-   - **Top Picks** (3-5 best deals with links)
-   - **Other Options** (table: price, item, link)
-   - **Avoid** (overpriced/sketchy listings)
-
-CRITICAL: Every item MUST have a Facebook Marketplace link.
-Format: [Item - $XX](https://facebook.com/marketplace/item/XXX)
-No link = don't include it.
-
-IMPORTANT: When done, save the report to: ${reportPath}`;
-
-  // Add any post-instructions (e.g., send to Telegram)
-  if (search.postInstructions) {
-    prompt += `
-
-AFTER SAVING THE REPORT:
-${search.postInstructions}`;
-  }
-
-  return prompt;
+/**
+ * Process the prompt template, replacing variables:
+ * - {{reportPath}} → absolute path to report.md for this job
+ */
+function processPrompt(promptTemplate: string, reportPath: string): string {
+  return promptTemplate.replace(/\{\{reportPath\}\}/g, reportPath);
 }
 
 // === JOB EXECUTION ===
@@ -145,6 +89,12 @@ export async function startJob(searchSlug: string, options: RunJobOptions = {}):
   const search = getSearch(searchSlug);
   if (!search) {
     throw new Error(`Search "${searchSlug}" not found`);
+  }
+
+  // Get the prompt template
+  const promptTemplate = getPrompt(searchSlug);
+  if (!promptTemplate) {
+    throw new Error(`No prompt.md found for "${searchSlug}"`);
   }
 
   // Queue if another job running
@@ -165,8 +115,8 @@ export async function startJob(searchSlug: string, options: RunJobOptions = {}):
   const opencodeBin = findOpencodeBinary();
   const projectRoot = findProjectRoot();
 
-  // Build prompt that tells opencode to write to report.md
-  const prompt = buildPrompt(search, reportPath);
+  // Process prompt template (replace {{reportPath}})
+  const prompt = processPrompt(promptTemplate, reportPath);
 
   // Mark running
   setCurrentJob(job.id);
@@ -178,18 +128,19 @@ export async function startJob(searchSlug: string, options: RunJobOptions = {}):
 
   options.onStart?.(job);
 
-  // Write prompt file
+  // Write processed prompt to job folder (for debugging/history)
   const promptFile = join(jobDir, "prompt.txt");
   writeFileSync(promptFile, prompt);
 
   // Script: run opencode, then touch DONE
+  // Note: No --agent flag - agents are referenced in the prompt via @agent syntax
   const scriptPath = join(jobDir, "run.sh");
   writeFileSync(
     scriptPath,
     `#!/bin/bash
 cd "${projectRoot}"
 PROMPT=$(cat "${promptFile}")
-${opencodeBin} run --agent fb-marketplace "$PROMPT" 2>&1 | tee "${logPath}"
+${opencodeBin} run "$PROMPT" 2>&1 | tee "${logPath}"
 touch "${donePath}"
 `
   );
@@ -314,9 +265,10 @@ export function getRunningJob(): { searchSlug: string; job: Job } | null {
   const state = getQueueState();
   if (!state.currentJobId) return null;
 
-  if (!existsSync(SEARCHES_DIR)) return null;
+  const searchesDir = getSearchesDir();
+  if (!existsSync(searchesDir)) return null;
 
-  for (const slug of readdirSync(SEARCHES_DIR)) {
+  for (const slug of readdirSync(searchesDir)) {
     const job = getJob(slug, state.currentJobId);
     if (job) return { searchSlug: slug, job };
   }

@@ -1,5 +1,5 @@
 /**
- * marketplace-tracker core
+ * @cool-website/job-runner core
  */
 
 // Types
@@ -12,11 +12,13 @@ export type {
   RunJobOptions,
 } from "./types";
 
-// Paths
+// Paths - configuration
 export {
-  CONFIG_DIR,
-  SEARCHES_DIR,
+  setDataDir,
+  getDataDir,
+  getSearchesDir,
   getSearchDir,
+  getSearchPromptPath,
   getJobDir,
   getJobLogPath,
   getJobReportPath,
@@ -35,6 +37,8 @@ export {
   updateSearch,
   deleteSearch,
   searchExists,
+  getPrompt,
+  updatePrompt,
 } from "./search-store";
 
 // Job store

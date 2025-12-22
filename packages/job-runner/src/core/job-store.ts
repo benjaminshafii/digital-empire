@@ -11,8 +11,8 @@ import {
 import { randomBytes } from "crypto";
 import type { Job, QueueState } from "./types";
 import {
-  QUEUE_FILE,
-  SEARCHES_DIR,
+  getQueueFile,
+  getSearchesDir,
   getSearchJobsDir,
   getJobDir,
   getJobMetaPath,
@@ -104,13 +104,13 @@ export function listJobsForSearch(searchSlug: string): Job[] {
 export function listAllJobs(limit = 20): Job[] {
   ensureConfigDirs();
 
-  // Read search slugs directly to avoid circular dependency
-  if (!existsSync(SEARCHES_DIR)) {
+  const searchesDir = getSearchesDir();
+  if (!existsSync(searchesDir)) {
     return [];
   }
 
   const allJobs: Job[] = [];
-  const searchSlugs = readdirSync(SEARCHES_DIR);
+  const searchSlugs = readdirSync(searchesDir);
 
   for (const slug of searchSlugs) {
     const jobs = listJobsForSearch(slug);
@@ -174,12 +174,13 @@ export function getLatestJob(searchSlug: string): Job | null {
 
 // Queue operations
 export function getQueueState(): QueueState {
-  if (!existsSync(QUEUE_FILE)) {
+  const queueFile = getQueueFile();
+  if (!existsSync(queueFile)) {
     return { queue: [], lastUpdated: new Date().toISOString() };
   }
 
   try {
-    return JSON.parse(readFileSync(QUEUE_FILE, "utf-8"));
+    return JSON.parse(readFileSync(queueFile, "utf-8"));
   } catch {
     return { queue: [], lastUpdated: new Date().toISOString() };
   }
@@ -188,7 +189,7 @@ export function getQueueState(): QueueState {
 export function saveQueueState(state: QueueState): void {
   ensureConfigDirs();
   state.lastUpdated = new Date().toISOString();
-  writeFileSync(QUEUE_FILE, JSON.stringify(state, null, 2));
+  writeFileSync(getQueueFile(), JSON.stringify(state, null, 2));
 }
 
 export function addToQueue(jobId: string, searchSlug: string): void {

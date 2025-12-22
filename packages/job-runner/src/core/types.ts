@@ -1,15 +1,16 @@
 /**
- * Core types for marketplace-tracker
+ * Core types for opencode job orchestrator
+ *
+ * This is a generic job runner for OpenCode. The prompt (stored in prompt.md)
+ * is the source of truth - it can reference any agents via @agent syntax.
  */
 
-// Search - a saved search configuration
+// Search - a saved job configuration
+// The actual prompt content lives in prompt.md, not here
 export interface Search {
   slug: string;
   name: string;
-  prompt: string;
-  location: string;
   schedule?: string; // interval: "30m", "1h", "6h", "24h"
-  postInstructions?: string; // Additional instructions to run after report (e.g., "Send summary to Telegram")
   createdAt: string; // ISO date
   updatedAt?: string;
 }
@@ -43,8 +44,7 @@ export interface JobResult {
 // Options for creating a search
 export interface CreateSearchOptions {
   name: string;
-  prompt: string;
-  location?: string;
+  prompt: string; // Initial prompt content (will be written to prompt.md)
   schedule?: string;
 }
 

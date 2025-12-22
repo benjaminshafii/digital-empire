@@ -1,14 +1,15 @@
 #!/usr/bin/env bun
 /**
- * mkt - Marketplace Tracker CLI
+ * mkt - OpenCode Job Runner CLI
  *
- * Automate Facebook Marketplace searches with AI
+ * Run and schedule OpenCode agent jobs
  */
 
 import { parseArgs } from "util";
 import { addCommand } from "./commands/add";
 import { listCommand } from "./commands/list";
 import { runCommand } from "./commands/run";
+import { editCommand } from "./commands/edit";
 import { jobsCommand } from "./commands/jobs";
 import { watchCommand } from "./commands/watch";
 import { showCommand } from "./commands/show";
@@ -20,23 +21,24 @@ import { cancelCommand } from "./commands/cancel";
 const VERSION = "0.1.0";
 
 const HELP = `
-mkt - Marketplace Tracker CLI v${VERSION}
+mkt - OpenCode Job Runner v${VERSION}
 
-Automate Facebook Marketplace searches with AI.
+Run and schedule OpenCode agent jobs.
 
 USAGE:
   mkt <command> [options]
 
 COMMANDS:
-  add [name]              Create a new saved search
-  list, ls                List all saved searches
-  run <slug>              Run a marketplace search
-  jobs                    List recent jobs
+  add [name]              Create a new job with a prompt
+  edit <slug>             Edit a job's prompt
+  list, ls                List all saved jobs
+  run <slug>              Run a job
+  jobs                    List recent job runs
   watch [job-id]          Attach to a running job's tmux session
-  show <slug>             View the latest report for a search
-  delete, rm <slug>       Delete a saved search
+  show <slug>             View the latest report for a job
+  delete, rm <slug>       Delete a saved job
   cancel [job-id]         Cancel running or queued jobs
-  schedule <subcommand>   Manage scheduled runs via cron
+  schedule <subcommand>   Manage scheduled runs
   sync                    Fix orphaned job statuses
 
 OPTIONS:
@@ -44,15 +46,22 @@ OPTIONS:
   -v, --version           Show version
 
 EXAMPLES:
-  mkt add "speakers" --prompt "Good speaker under 200"
-  mkt run speakers --attach
-  mkt show speakers
-  mkt jobs --status running
+  # Create a FB Marketplace search (default template)
+  mkt add -p "Standing desk under 300"
+  
+  # Create a raw prompt with any agents
+  mkt add -r -p "@my-agent Do something"
+  
+  # Edit the prompt
+  mkt edit standing-desk
+  
+  # Run and watch
+  mkt run standing-desk --attach
 
 For more info: https://github.com/sst/opencode
 `;
 
-async function main() {
+export async function main() {
   const args = process.argv.slice(2);
   
   if (args.length === 0 || args[0] === "-h" || args[0] === "--help") {
@@ -72,6 +81,9 @@ async function main() {
     switch (command) {
       case "add":
         await addCommand(commandArgs);
+        break;
+      case "edit":
+        await editCommand(commandArgs);
         break;
       case "list":
       case "ls":
@@ -113,4 +125,7 @@ async function main() {
   }
 }
 
-main();
+// Auto-run if this is the entry point
+if (import.meta.main) {
+  main();
+}
