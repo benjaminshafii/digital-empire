@@ -28,21 +28,6 @@ bun run src/cli.ts jobs
 bun run src/cli.ts show standing-desk
 ```
 
-## Web UI
-
-```bash
-bun run src/server.ts
-# Open http://localhost:3456
-```
-
-Features:
-- Dashboard with all searches and job status
-- Add new searches
-- Run searches with one click
-- View/edit prompts
-- View reports with rendered markdown and clickable links
-- Cancel running jobs, clear queue
-
 ## CLI Commands
 
 ```bash

@@ -29,10 +29,10 @@ Write your blog posts in Obsidian, add `publish: true` to the frontmatter, and c
 pnpm install
 
 # Build the plugin
-pnpm --filter @cool-website/obsidian-plugin build
+pnpm --filter @digital-empire/obsidian-plugin build
 
 # Run tests
-pnpm --filter @cool-website/obsidian-plugin test
+pnpm --filter @digital-empire/obsidian-plugin test
 ```
 
 ## Usage
@@ -42,7 +42,7 @@ pnpm --filter @cool-website/obsidian-plugin test
 In Obsidian Settings > Website Sync:
 
 - **GitHub Token**: Personal access token with repo write permissions
-- **Repository**: `owner/repo` format (e.g., `benjaminshafii/cool-website`)
+- **Repository**: `owner/repo` format (e.g., `benjaminshafii/digital-empire`)
 - **Source Folder**: Folder in your vault to sync from (e.g., `publish/`)
 - **Target Path**: Path in the repo to sync to (e.g., `apps/blog/src/content/`)
 
@@ -119,10 +119,10 @@ The plugin transforms Obsidian-specific syntax for web compatibility:
 
 ```bash
 # Run all tests
-pnpm --filter @cool-website/obsidian-plugin test
+pnpm --filter @digital-empire/obsidian-plugin test
 
 # Run specific test file
-pnpm --filter @cool-website/obsidian-plugin vitest run src/services/sync.test.ts
+pnpm --filter @digital-empire/obsidian-plugin vitest run src/services/sync.test.ts
 ```
 
 ## License

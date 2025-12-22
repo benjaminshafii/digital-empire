@@ -65,7 +65,7 @@ interface PluginSettings {
   sourceFolder: string;      // Default: "publish"
   githubToken: string;       // PAT with repo access
   githubOwner: string;       // e.g., "benjaminshafii"
-  githubRepo: string;        // e.g., "cool-website"
+  githubRepo: string;        // e.g., "digital-empire"
   targetPath: string;        // e.g., "apps/blog/src/content/blog"
   branch: string;            // Default: "master"
   syncedNotes: Record<string, {  // Persisted sync state
@@ -134,7 +134,7 @@ Native Obsidian settings interface:
 ├─────────────────────────────────────────────┤
 │  Repository                                 │
 │  Owner: [benjaminshafii            ]        │
-│  Repo:  [cool-website              ]        │
+│  Repo:  [digital-empire            ]        │
 │  Branch: [master                   ]        │
 ├─────────────────────────────────────────────┤
 │  Target Path                                │

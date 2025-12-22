@@ -1,5 +1,5 @@
 {
-  "name": "@cool-website/marketplace-tracker",
+  "name": "@digital-empire/marketplace-tracker",
   "version": "0.1.0",
   "description": "Facebook Marketplace deal finder - built on opencode-job-runner",
   "type": "module",

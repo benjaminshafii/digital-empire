@@ -31,10 +31,10 @@ I've been in crypto since 2018. Founded [0.finance](https://0.finance) (OSS bank
 pnpm install
 
 # Run digital-garden dev server
-pnpm --filter @cool-website/portfolio dev
+pnpm --filter @digital-empire/portfolio dev
 
 # Run blog dev server
-pnpm --filter @cool-website/blog dev
+pnpm --filter @digital-empire/blog dev
 
 # Build all
 pnpm build

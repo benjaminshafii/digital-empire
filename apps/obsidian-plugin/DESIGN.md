@@ -47,7 +47,7 @@ A simple Obsidian plugin that syncs markdown files from a designated folder in y
                            ▼
 ┌─────────────────────────────────────────────────────────┐
 │              GITHUB REPOSITORY                           │
-│  cool-website/                                          │
+│  digital-empire/                                        │
 │    └── apps/blog/src/content/blog/                      │
 │          ├── my-first-post.md                           │
 │          └── another-post.md                            │

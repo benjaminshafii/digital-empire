@@ -2,10 +2,10 @@
 
 ## Build/Test Commands
 - Package manager: `pnpm` (monorepo with Turborepo)
-- Blog: `pnpm --filter @cool-website/blog dev|build`
-- Portfolio: `pnpm --filter @cool-website/portfolio dev|build`
-- Obsidian plugin: `pnpm --filter @cool-website/obsidian-plugin build|test`
-- Run single test: `pnpm --filter @cool-website/obsidian-plugin vitest run src/services/<file>.test.ts`
+- Blog: `pnpm --filter @digital-empire/blog dev|build`
+- Portfolio: `pnpm --filter @digital-empire/portfolio dev|build`
+- Obsidian plugin: `pnpm --filter @digital-empire/obsidian-plugin build|test`
+- Run single test: `pnpm --filter @digital-empire/obsidian-plugin vitest run src/services/<file>.test.ts`
 
 ## Code Style
 - TypeScript strict mode with `strictNullChecks`

@@ -57,7 +57,7 @@ The `.ply` splat file is pre-cropped and compressed (2.1MB vs 27MB original). To
 ## Development
 
 ```bash
-pnpm --filter @cool-website/portfolio dev
+pnpm --filter @digital-empire/portfolio dev
 ```
 
 Press `Ctrl+Shift+D` in the app to open debug controls for aligning wireframe/splat transforms.

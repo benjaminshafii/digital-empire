@@ -38,7 +38,7 @@ export interface PluginSettings {
   sourceFolder: string; // Default: "publish"
   githubToken: string; // PAT with repo access
   githubOwner: string; // e.g., "benjaminshafii"
-  githubRepo: string; // e.g., "cool-website"
+  githubRepo: string; // e.g., "digital-empire"
   targetPath: string; // e.g., "apps/blog/src/content/blog"
   branch: string; // Default: "main"
   syncedNotes: Record<string, PersistedSyncState>;

@@ -145,7 +145,7 @@ export function findProjectRoot(): string {
   }
 
   // Fallback to known location
-  const fallback = join(homedir(), "git", "personal", "cool-website");
+  const fallback = join(homedir(), "git", "personal", "digital-empire");
   if (existsSync(join(fallback, "opencode.json"))) {
     return fallback;
   }

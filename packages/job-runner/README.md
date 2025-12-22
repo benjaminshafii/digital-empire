@@ -136,24 +136,6 @@ const { main } = await import("opencode-job-runner/cli");
 main();
 ```
 
-**Web server (`src/server.ts`):**
-
-```typescript
-#!/usr/bin/env bun
-import { join, dirname } from "path";
-import { setDataDir } from "opencode-job-runner";
-import { createServer } from "opencode-job-runner/web";
-
-const appDir = dirname(dirname(new URL(import.meta.url).pathname));
-setDataDir(join(appDir, "data"));
-
-export default createServer({
-  port: 3456,
-  scheduler: true,
-  name: "My App",
-});
-```
-
 ## Package Exports
 
 ### Core (`opencode-job-runner`)
@@ -195,18 +177,6 @@ import {
 ```typescript
 import { main } from "opencode-job-runner/cli";
 main();
-```
-
-### Web (`opencode-job-runner/web`)
-
-```typescript
-import { createServer } from "opencode-job-runner/web";
-
-export default createServer({
-  port: 3456,
-  scheduler: true,
-  name: "My Dashboard",
-});
 ```
 
 ## Example App

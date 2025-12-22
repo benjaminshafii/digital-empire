@@ -1,5 +1,5 @@
 {
-  "name": "@cool-website/obsidian-plugin",
+  "name": "@digital-empire/obsidian-plugin",
   "version": "1.0.0",
   "description": "Sync Obsidian notes to your website via GitHub",
   "main": "main.js",
