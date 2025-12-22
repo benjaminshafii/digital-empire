@@ -12,6 +12,6 @@
     "declaration": true,
     "declarationMap": true,
     "composite": true,
-    "types": ["bun-types"]
+    "types": ["node"]
   }
 }

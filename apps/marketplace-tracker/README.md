@@ -1,111 +1,125 @@
-# Marketplace Tracker
+# mkt - Marketplace Tracker
 
-A CLI tool for tracking deals on Facebook Marketplace. Set up search queries with price limits and get notified when new items matching your criteria appear.
+Automate Facebook Marketplace searches with AI.
 
-## Features
-
-- **Multiple Search Queries**: Track multiple items with different search terms and price limits
-- **Status Tracking**: Mark items as new, seen, contacted, purchased, or hidden
-- **Terminal UI**: Beautiful TUI for browsing results
-- **Background Watching**: Run in watch mode to continuously check for new deals
-- **Persistent Storage**: SQLite database for storing queries and results
-
-## Installation
+## Install
 
 ```bash
-# From the monorepo root
-pnpm install
-
-# Run the CLI
-pnpm --filter @cool-website/marketplace-tracker-cli dev
+# From source (requires bun)
+cd apps/marketplace-tracker
+bun install
+bun run build
+cp dist/mkt ~/.local/bin/
 ```
 
-## Usage
-
-### Commands
+Or run directly:
 
 ```bash
-# Add a new search query
-marketplace-tracker add "iPhone 15" --max-price 800 --location "San Francisco"
-
-# List all saved queries
-marketplace-tracker list
-
-# Run all queries once
-marketplace-tracker run
-
-# Watch mode - continuously check for new items
-marketplace-tracker watch
-
-# Delete a query
-marketplace-tracker delete <query-id>
+bun run dev --help
 ```
 
-### Terminal UI
-
-Launch the interactive terminal UI to browse results:
+## Quick Start
 
 ```bash
-marketplace-tracker tui
+# Create a search
+mkt add "speakers" --prompt "Good speaker + amp combo, under $400"
+
+# Run it (opens in tmux, you can watch live)
+mkt run speakers --attach
+
+# Check status
+mkt jobs
+
+# View results
+mkt show speakers
 ```
 
-## Project Structure
+## Commands
 
-```
-marketplace-tracker/
-├── packages/
-│   ├── cli/              # CLI application
-│   │   ├── src/
-│   │   │   ├── commands/ # CLI commands (add, list, run, etc.)
-│   │   │   ├── tui/      # Terminal UI components
-│   │   │   └── index.ts  # Entry point
-│   │   └── package.json
-│   └── core/             # Core library
-│       ├── src/
-│       │   ├── runner.ts # Search runner
-│       │   ├── store.ts  # Data persistence
-│       │   └── types.ts  # TypeScript types
-│       └── package.json
-├── package.json
-└── turbo.json
+```bash
+mkt add <name>              # Create a new saved search
+mkt list                    # List all saved searches
+mkt run <slug>              # Run a search
+mkt run <slug> --attach     # Run and watch live
+mkt run --all               # Run all searches
+mkt jobs                    # List recent jobs
+mkt watch [job-id]          # Attach to running job
+mkt show <slug>             # View latest report
+mkt delete <slug>           # Delete a search
+mkt schedule set <slug> <cron>  # Set schedule
+mkt schedule list           # List scheduled
+mkt schedule install        # Generate cron config
 ```
 
-## Tech Stack
+## How It Works
 
-- **TypeScript** - Type-safe code
-- **Ink** - React for CLI (Terminal UI)
-- **better-sqlite3** - Local database
-- **Commander** - CLI framework
+1. **Searches** are saved configurations (what to search, where)
+2. **Jobs** run in **tmux sessions** via opencode's fb-marketplace agent
+3. You can watch live (`mkt watch`) or let it run in background
+4. **Reports** are extracted and saved as markdown
+5. **Cron** can trigger runs on a schedule
 
-## Data Model
+## Storage
 
-### Query
-```typescript
-interface Query {
-  id: string;
-  name: string;
-  searchTerms: string[];
-  maxPrice: number;
-  location: string;
-  createdAt: string;
-  lastRun: string | null;
-}
+```
+~/.config/marketplace-tracker/
+├── queue.json                    # Job queue state
+└── searches/
+    └── speakers/
+        ├── config.json           # Search config
+        └── jobs/
+            └── abc123/
+                ├── meta.json     # Job metadata
+                ├── output.log    # Raw output
+                └── report.md     # Report
 ```
 
-### Item
-```typescript
-interface Item {
-  id: string;
-  queryId: string;
-  title: string;
-  price: string;
-  link: string;
-  location: string;
-  firstSeen: string;
-  status: "new" | "seen" | "contacted" | "purchased" | "hidden";
-}
+## Requirements
+
+- [opencode](https://opencode.ai) - for the fb-marketplace agent
+- tmux - for job sessions (`brew install tmux`)
+- bun - for building (optional, binaries coming soon)
+
+## Architecture
+
+```
+┌────────────────────────────────────────┐
+│  mkt CLI (Bun standalone binary)       │
+├────────────────────────────────────────┤
+│  Core: SearchStore, JobStore, Runner   │
+├────────────────────────────────────────┤
+│  tmux sessions                         │
+├────────────────────────────────────────┤
+│  opencode --agent fb-marketplace       │
+└────────────────────────────────────────┘
 ```
 
-## License
+The CLI is a thin wrapper around opencode. It:
+- Stores search configurations
+- Manages job queue (sequential to avoid Chrome conflicts)
+- Runs opencode in tmux for visibility
+- Extracts reports from output
 
-MIT
+## JSON Output
+
+All commands support `--json` for scripting:
+
+```bash
+mkt list --json | jq '.[].slug'
+mkt jobs --json | jq 'map(select(.status == "running"))'
+mkt show speakers --json | jq '.report'
+```
+
+## Scheduling
+
+```bash
+# Set a daily schedule
+mkt schedule set speakers "0 9 * * *"
+
+# Generate cron config
+mkt schedule install
+
+# Add to crontab
+crontab -e
+# paste the generated line
+```

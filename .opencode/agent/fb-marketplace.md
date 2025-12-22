@@ -1,6 +1,6 @@
 ---
 description: Finds deals on Facebook Marketplace matching user criteria
-mode: subagent
+mode: primary
 model: anthropic/claude-opus-4-5-20251101
 temperature: 0.1
 tools:
