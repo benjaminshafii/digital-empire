@@ -1,17 +1,13 @@
 /**
- * JobRunner - Execute jobs using tmux and opencode
+ * JobRunner - Simple pipeline: Search → tmux → opencode → report.md
  *
- * Key design:
- * - Each job runs in its own tmux session
- * - You can attach to watch live: tmux attach -t mkt-<jobId>
- * - Output is logged to a file via `script`
- * - Jobs run sequentially (one at a time) to avoid Chrome MCP conflicts
+ * Key: opencode writes report directly to report.md file
+ * No log parsing needed - just check if report.md exists
  */
-import { spawn, execSync, spawnSync } from "child_process";
-import { existsSync, writeFileSync, readFileSync, watch, readdirSync } from "fs";
-import { homedir } from "os";
+import { execSync, spawnSync } from "child_process";
+import { existsSync, writeFileSync, readFileSync, readdirSync } from "fs";
 import { join } from "path";
-import type { Job, Search, JobResult, RunJobOptions } from "./types";
+import type { Job, Search, RunJobOptions } from "./types";
 import { getSearch } from "./search-store";
 import {
   createJob,
@@ -22,22 +18,22 @@ import {
   setCurrentJob,
   getQueueState,
   getNextQueuedJob,
-  saveJobReport,
   listJobsForSearch,
   getJobReport,
 } from "./job-store";
 import {
   getJobDir,
   getJobLogPath,
+  getJobReportPath,
   findOpencodeBinary,
   findProjectRoot,
   SEARCHES_DIR,
 } from "./paths";
 
-// Tmux session prefix
 const TMUX_PREFIX = "mkt";
 
-// Check if tmux is available
+// === TMUX HELPERS ===
+
 export function isTmuxAvailable(): boolean {
   try {
     execSync("which tmux", { stdio: "ignore" });
@@ -47,190 +43,103 @@ export function isTmuxAvailable(): boolean {
   }
 }
 
-// Get tmux session name for a job
 export function getTmuxSessionName(jobId: string): string {
   return `${TMUX_PREFIX}-${jobId}`;
 }
 
-// Check if a tmux session exists
 export function tmuxSessionExists(sessionName: string): boolean {
   try {
-    execSync(`tmux has-session -t ${sessionName} 2>/dev/null`, {
-      stdio: "ignore",
-    });
+    execSync(`tmux has-session -t ${sessionName} 2>/dev/null`, { stdio: "ignore" });
     return true;
   } catch {
     return false;
   }
 }
 
-// List all marketplace-tracker tmux sessions
 export function listTmuxSessions(): string[] {
   try {
-    const output = execSync("tmux list-sessions -F '#{session_name}'", {
-      encoding: "utf-8",
-    });
-    return output
-      .split("\n")
-      .filter((s) => s.startsWith(TMUX_PREFIX + "-"));
+    const output = execSync("tmux list-sessions -F '#{session_name}'", { encoding: "utf-8" });
+    return output.split("\n").filter((s) => s.startsWith(TMUX_PREFIX + "-"));
   } catch {
     return [];
   }
 }
 
-// Get previous reports for context
-function getPreviousReports(searchSlug: string, limit = 3): string[] {
+export function getAttachCommand(jobId: string): string {
+  return `tmux attach -t ${getTmuxSessionName(jobId)}`;
+}
+
+// === PROMPT BUILDING ===
+
+function getPreviousReports(searchSlug: string, limit = 2): string[] {
   const jobs = listJobsForSearch(searchSlug);
-  const completedJobs = jobs.filter(j => j.status === "completed").slice(0, limit);
-  
+  const completedJobs = jobs.filter((j) => j.status === "completed").slice(0, limit);
+
   const reports: string[] = [];
   for (const job of completedJobs) {
     const report = getJobReport(searchSlug, job.id);
     if (report) {
       const date = new Date(job.completedAt || job.createdAt).toLocaleDateString();
-      reports.push(`--- Report from ${date} ---\n${report.substring(0, 2000)}${report.length > 2000 ? '\n...(truncated)' : ''}`);
+      reports.push(`--- Report from ${date} ---\n${report.substring(0, 1500)}`);
     }
   }
-  
   return reports;
 }
 
-// Build the prompt for the marketplace search
-function buildPrompt(search: Search): string {
+function buildPrompt(search: Search, reportPath: string): string {
   const previousReports = getPreviousReports(search.slug);
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  
-  let prompt = `You are helping me find deals on Facebook Marketplace.
+  const today = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
-TODAY'S DATE: ${today}
+  let prompt = `Find deals on Facebook Marketplace.
+
+TODAY: ${today}
 LOCATION: ${search.location}
 
-MY REQUEST:
-${search.prompt}
+SEARCH: ${search.prompt}
 
 `;
 
   if (previousReports.length > 0) {
-    prompt += `PREVIOUS RESEARCH:
-I've searched for this before. Here are my previous reports for reference:
-
-${previousReports.join('\n\n')}
-
-Use this previous research to:
-- Identify if any previously-found deals are still available
-- Track price changes on items you've seen before
-- Note which items have sold (no longer available)
-- Find NEW listings that weren't in previous searches
+    prompt += `PREVIOUS REPORTS (compare for new/sold items):
+${previousReports.join("\n\n")}
 
 `;
   }
 
   prompt += `INSTRUCTIONS:
 1. Search Facebook Marketplace for relevant items
-2. Compare with previous research if available
-3. Write a markdown report
+2. Write a markdown report with:
+   - **Top Picks** (3-5 best deals with links)
+   - **Other Options** (table: price, item, link)
+   - **Avoid** (overpriced/sketchy listings)
 
-CRITICAL: EVERY listing you mention MUST include a direct Facebook Marketplace link.
-Format links as: [Item Name - $XX](https://www.facebook.com/marketplace/item/XXXXX/)
-If you can't get the link for an item, DO NOT include it in the report.
+CRITICAL: Every item MUST have a Facebook Marketplace link.
+Format: [Item - $XX](https://facebook.com/marketplace/item/XXX)
+No link = don't include it.
 
-## Report Format
+IMPORTANT: When done, save the report to: ${reportPath}`;
 
-For EACH item include:
-1. **[Item Title - $Price](facebook marketplace link)** - REQUIRED, must be clickable
-2. Seller info (ratings if visible)
-3. Condition notes
-4. Why it's a good/bad deal
-5. Any concerns
+  // Add any post-instructions (e.g., send to Telegram)
+  if (search.postInstructions) {
+    prompt += `
 
-## Sections to include:
-
-### Top Picks (3-5 items max)
-Your best recommendations with full details and links.
-
-### Other Options
-Quick list of other decent finds with links.
-
-### What to Avoid
-Any overpriced or sketchy listings you saw (with links so I know what to skip).
-
-Be concise. I need actionable info with LINKS so I can message sellers immediately.`;
+AFTER SAVING THE REPORT:
+${search.postInstructions}`;
+  }
 
   return prompt;
 }
 
-// Extract markdown from opencode output
-function extractReport(logPath: string): string {
-  if (!existsSync(logPath)) {
-    return "";
-  }
+// === JOB EXECUTION ===
 
-  const content = readFileSync(logPath, "utf-8");
-  const lines = content.split("\n");
-  let report = "";
-  let inReport = false;
-  let reportLines: string[] = [];
-
-  for (const line of lines) {
-    // Remove ANSI color codes
-    const cleanLine = line.replace(/\x1b\[[0-9;]*m/g, "").trim();
-
-    // Start capturing at any markdown header (# or ##)
-    if (cleanLine.match(/^#{1,2} /) && !inReport) {
-      inReport = true;
-      reportLines = [cleanLine];
-    } else if (inReport) {
-      // Skip tool calls but keep going
-      if (cleanLine.match(/^\|  \w+_/) || cleanLine.startsWith("$ ") || cleanLine.startsWith("bun run")) {
-        continue;
-      }
-      // Stop at end markers
-      if (cleanLine.includes("opencode") && cleanLine.includes("session")) {
-        break;
-      }
-      // Keep all markdown content
-      reportLines.push(cleanLine);
-    }
-  }
-
-  // If we found structured content, use it
-  if (reportLines.length > 10) {
-    report = reportLines.join("\n");
-  }
-
-  // Fallback: try to extract from JSON format
-  if (!report) {
-    try {
-      for (const line of lines) {
-        if (line.includes('"type":"text"') || line.includes('"type":"message"')) {
-          const parsed = JSON.parse(line);
-          if (parsed.part?.text) {
-            report = parsed.part.text;
-          } else if (parsed.message?.content) {
-            for (const part of parsed.message.content) {
-              if (part.type === "text" && part.text) {
-                report = part.text;
-              }
-            }
-          }
-        }
-      }
-    } catch {
-      // Not JSON format
-    }
-  }
-
-  return report.trim();
-}
-
-// Start a job running in tmux
-export async function startJob(
-  searchSlug: string,
-  options: RunJobOptions = {}
-): Promise<Job> {
-  // Check preconditions
+export async function startJob(searchSlug: string, options: RunJobOptions = {}): Promise<Job> {
   if (!isTmuxAvailable()) {
-    throw new Error("tmux is not installed. Please install it: brew install tmux");
+    throw new Error("tmux required: brew install tmux");
   }
 
   const search = getSearch(searchSlug);
@@ -238,24 +147,28 @@ export async function startJob(
     throw new Error(`Search "${searchSlug}" not found`);
   }
 
-  // Check if there's already a job running
+  // Queue if another job running
   const queueState = getQueueState();
   if (queueState.currentJobId) {
-    // Queue this job instead
     const job = createJob(searchSlug);
     addToQueue(job.id, searchSlug);
     return job;
   }
 
-  // Create the job
+  // Create job
   const job = createJob(searchSlug);
   const sessionName = getTmuxSessionName(job.id);
+  const jobDir = getJobDir(searchSlug, job.id);
   const logPath = getJobLogPath(searchSlug, job.id);
-  const prompt = buildPrompt(search);
+  const reportPath = getJobReportPath(searchSlug, job.id);
+  const donePath = join(jobDir, "DONE");
   const opencodeBin = findOpencodeBinary();
   const projectRoot = findProjectRoot();
 
-  // Mark as running
+  // Build prompt that tells opencode to write to report.md
+  const prompt = buildPrompt(search, reportPath);
+
+  // Mark running
   setCurrentJob(job.id);
   updateJob(searchSlug, job.id, {
     status: "running",
@@ -265,103 +178,104 @@ export async function startJob(
 
   options.onStart?.(job);
 
-  // Write a shell script to run
-  const jobDir = getJobDir(searchSlug, job.id);
-  const scriptPath = join(jobDir, "run.sh");
+  // Write prompt file
   const promptFile = join(jobDir, "prompt.txt");
-  
-  // Write prompt to a separate file
   writeFileSync(promptFile, prompt);
-  
-  // Create a script that reads the prompt from file
-  // Note: opencode run [message] - the "run" subcommand is required!
-  writeFileSync(scriptPath, `#!/bin/bash
+
+  // Script: run opencode, then touch DONE
+  const scriptPath = join(jobDir, "run.sh");
+  writeFileSync(
+    scriptPath,
+    `#!/bin/bash
 cd "${projectRoot}"
-PROMPT=\$(cat "${promptFile}")
-${opencodeBin} run --agent fb-marketplace "\$PROMPT" 2>&1 | tee "${logPath}"
-`);
+PROMPT=$(cat "${promptFile}")
+${opencodeBin} run --agent fb-marketplace "$PROMPT" 2>&1 | tee "${logPath}"
+touch "${donePath}"
+`
+  );
   execSync(`chmod +x "${scriptPath}"`);
 
-  // Create tmux session - use the script path directly (it's executable)
+  // Start tmux session
   try {
-    execSync(`tmux new-session -d -s "${sessionName}" "${scriptPath}"`, {
-      stdio: "pipe",
-    });
+    execSync(`tmux new-session -d -s "${sessionName}" "${scriptPath}"`, { stdio: "pipe" });
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     updateJob(searchSlug, job.id, {
       status: "failed",
       completedAt: new Date().toISOString(),
-      error: `Failed to start tmux session: ${errMsg}`,
+      error: `tmux failed: ${errMsg}`,
     });
     setCurrentJob(undefined);
     throw error;
   }
 
-  // Watch for completion in background
-  watchJobCompletion(searchSlug, job.id, sessionName, logPath, options);
+  // Watch for completion
+  watchJobCompletion(searchSlug, job.id, sessionName, reportPath, donePath, options);
 
   return getJob(searchSlug, job.id)!;
 }
 
-// Watch for job completion (non-blocking)
 function watchJobCompletion(
   searchSlug: string,
   jobId: string,
   sessionName: string,
-  logPath: string,
+  reportPath: string,
+  donePath: string,
   options: RunJobOptions
 ): void {
   const checkInterval = setInterval(() => {
-    // Check if tmux session still exists
-    if (!tmuxSessionExists(sessionName)) {
+    const doneExists = existsSync(donePath);
+    const sessionGone = !tmuxSessionExists(sessionName);
+
+    if (doneExists || sessionGone) {
       clearInterval(checkInterval);
-
-      // Extract report from log
-      const report = extractReport(logPath);
-
-      // Update job status
-      const completedJob = updateJob(searchSlug, jobId, {
-        status: report ? "completed" : "failed",
-        completedAt: new Date().toISOString(),
-        error: report ? undefined : "No report generated",
-      });
-
-      // Save report if we got one
-      if (report) {
-        saveJobReport(searchSlug, jobId, report);
-      }
-
-      // Clear current job
-      setCurrentJob(undefined);
-
-      // Notify
-      options.onComplete?.({
-        job: completedJob,
-        report: report || undefined,
-        logFile: logPath,
-      });
-
-      // Process next job in queue
-      processQueue(options);
+      // Wait a moment for file writes to complete
+      setTimeout(() => finalizeJob(searchSlug, jobId, reportPath, options), 2000);
     }
-  }, 2000); // Check every 2 seconds
+  }, 2000);
 }
 
-// Process the next job in queue
+function finalizeJob(
+  searchSlug: string,
+  jobId: string,
+  reportPath: string,
+  options: RunJobOptions
+): void {
+  // Simple: check if report.md exists and has content
+  const hasReport = existsSync(reportPath);
+  let report = "";
+  
+  if (hasReport) {
+    report = readFileSync(reportPath, "utf-8").trim();
+  }
+
+  const success = report.length > 100;
+
+  const completedJob = updateJob(searchSlug, jobId, {
+    status: success ? "completed" : "failed",
+    completedAt: new Date().toISOString(),
+    error: success ? undefined : "No report generated",
+  });
+
+  setCurrentJob(undefined);
+
+  options.onComplete?.({
+    job: completedJob,
+    report: success ? report : undefined,
+    logFile: getJobLogPath(searchSlug, jobId),
+  });
+
+  processQueue(options);
+}
+
 async function processQueue(options: RunJobOptions): Promise<void> {
   const next = getNextQueuedJob();
-
-  if (!next) {
-    return;
-  }
+  if (!next) return;
 
   removeFromQueue(next.jobId);
 
-  // Recursively start the next job
   const job = getJob(next.searchSlug, next.jobId);
   if (job && job.status === "queued") {
-    // Update and run
     const search = getSearch(next.searchSlug);
     if (search) {
       await startJob(next.searchSlug, options);
@@ -369,75 +283,42 @@ async function processQueue(options: RunJobOptions): Promise<void> {
   }
 }
 
-// Attach to a running job's tmux session
+// === JOB CONTROL ===
+
 export function attachToJob(jobId: string): void {
   const sessionName = getTmuxSessionName(jobId);
-
   if (!tmuxSessionExists(sessionName)) {
-    throw new Error(`No running session for job ${jobId}`);
+    throw new Error(`No session for job ${jobId}`);
   }
-
-  // This replaces the current process
-  const result = spawnSync("tmux", ["attach", "-t", sessionName], {
-    stdio: "inherit",
-  });
-
-  if (result.error) {
-    throw result.error;
-  }
+  const result = spawnSync("tmux", ["attach", "-t", sessionName], { stdio: "inherit" });
+  if (result.error) throw result.error;
 }
 
-// Cancel a job
 export function cancelJob(searchSlug: string, jobId: string): void {
   const job = getJob(searchSlug, jobId);
-
-  if (!job) {
-    throw new Error(`Job "${jobId}" not found`);
-  }
+  if (!job) throw new Error(`Job "${jobId}" not found`);
 
   if (job.status === "queued") {
-    // Just remove from queue
     removeFromQueue(jobId);
-    updateJob(searchSlug, jobId, {
-      status: "cancelled",
-      completedAt: new Date().toISOString(),
-    });
+    updateJob(searchSlug, jobId, { status: "cancelled", completedAt: new Date().toISOString() });
   } else if (job.status === "running" && job.tmuxSession) {
-    // Kill tmux session
     try {
       execSync(`tmux kill-session -t ${job.tmuxSession}`, { stdio: "ignore" });
-    } catch {
-      // Session might already be gone
-    }
-
-    updateJob(searchSlug, jobId, {
-      status: "cancelled",
-      completedAt: new Date().toISOString(),
-    });
-
+    } catch {}
+    updateJob(searchSlug, jobId, { status: "cancelled", completedAt: new Date().toISOString() });
     setCurrentJob(undefined);
   }
 }
 
-// Get running job info
 export function getRunningJob(): { searchSlug: string; job: Job } | null {
   const state = getQueueState();
+  if (!state.currentJobId) return null;
 
-  if (!state.currentJobId) {
-    return null;
-  }
-
-  // Find which search this job belongs to by reading directory directly
-  if (!existsSync(SEARCHES_DIR)) {
-    return null;
-  }
+  if (!existsSync(SEARCHES_DIR)) return null;
 
   for (const slug of readdirSync(SEARCHES_DIR)) {
     const job = getJob(slug, state.currentJobId);
-    if (job) {
-      return { searchSlug: slug, job };
-    }
+    if (job) return { searchSlug: slug, job };
   }
-
   return null;
 }

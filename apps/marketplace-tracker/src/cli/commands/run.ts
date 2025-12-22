@@ -114,10 +114,8 @@ Examples:
     attachToJob(job.id);
   } else {
     console.log("Job running in background.");
-    console.log(`Watch live: mkt watch ${job.id}`);
-    console.log("Check status: mkt jobs");
-
-    // Keep process alive briefly to allow the watcher to start
-    await new Promise((r) => setTimeout(r, 1000));
+    console.log(`  Watch: tmux attach -t mkt-${job.id}`);
+    console.log(`  Status: mkt jobs`);
+    console.log(`  When done: mkt sync && mkt show ${slug}`);
   }
 }

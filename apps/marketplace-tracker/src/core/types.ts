@@ -8,7 +8,8 @@ export interface Search {
   name: string;
   prompt: string;
   location: string;
-  schedule?: string; // cron expression (e.g., "0 9 * * *" for daily at 9am)
+  schedule?: string; // interval: "30m", "1h", "6h", "24h"
+  postInstructions?: string; // Additional instructions to run after report (e.g., "Send summary to Telegram")
   createdAt: string; // ISO date
   updatedAt?: string;
 }

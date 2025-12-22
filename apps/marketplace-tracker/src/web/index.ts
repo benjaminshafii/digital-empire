@@ -1,429 +1,366 @@
 /**
- * Web server for Marketplace Tracker
- * 
- * Run with: bun run src/web/index.ts
+ * Marketplace Tracker - Web UI + Scheduler
+ *
+ * Pipeline: Search → tmux → opencode → report.md
  */
+import { existsSync, readFileSync } from "fs";
 import { Hono } from "hono";
 import { layout } from "./views/layout";
 import { homePage, addSearchForm } from "./views/home";
 import { searchPage } from "./views/search";
 import { reportPage } from "./views/report";
-import { listSearches, getSearch, createSearch, slugify, searchExists } from "../core/search-store";
-import { listJobsForSearch, getJob, getJobReport } from "../core/job-store";
-import { startJob, getRunningJob, cancelJob, tmuxSessionExists, getTmuxSessionName } from "../core/job-runner";
-import { removeFromQueue, clearQueue, listAllJobs, updateJob, getJobLog, saveJobReport, setCurrentJob, getQueueState, deleteJob } from "../core/job-store";
-import { ensureDataDirs } from "../core/paths";
-import type { Job } from "../core/types";
+import {
+  listSearches,
+  getSearch,
+  createSearch,
+  slugify,
+  searchExists,
+  updateSearch,
+  listJobsForSearch,
+  getJob,
+  getJobReport,
+  listAllJobs,
+  updateJob,
+  setCurrentJob,
+  getQueueState,
+  deleteJob,
+  clearQueue,
+  startJob,
+  getRunningJob,
+  cancelJob,
+  tmuxSessionExists,
+  getTmuxSessionName,
+  getAttachCommand,
+  getJobReportPath,
+  ensureDataDirs,
+} from "../core";
+import type { Search } from "../core/types";
 
-// Ensure data directories exist
 ensureDataDirs();
 
 const app = new Hono();
 
-// Add search page
-app.get("/add", (c) => {
-  const html = layout("Add Search", addSearchForm());
-  return c.html(html);
-});
+// === HELPERS ===
 
-// Home page - list all searches
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function formatRelativeTime(dateStr: string): string {
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  const hours = Math.floor(mins / 60);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return new Date(dateStr).toLocaleDateString();
+}
+
+async function generateNameFromPrompt(prompt: string): Promise<string> {
+  const { execSync } = await import("child_process");
+  const { findOpencodeBinary } = await import("../core/paths");
+  try {
+    const opencode = findOpencodeBinary();
+    const escaped = prompt.replace(/"/g, '\\"').replace(/\n/g, " ");
+    const result = execSync(
+      `${opencode} run "Generate a 1-3 word title. Reply with ONLY the title: ${escaped}"`,
+      { encoding: "utf-8", timeout: 15000 }
+    );
+    const lines = result.trim().split("\n").filter((l) => l.trim());
+    return (lines[lines.length - 1]?.trim() || "").replace(/["'`]/g, "").substring(0, 40) || "search";
+  } catch {
+    return prompt.split(/\s+/).slice(0, 2).join(" ").substring(0, 30) || "search";
+  }
+}
+
+// === PAGES ===
+
 app.get("/", (c) => {
   const searches = listSearches();
   const running = getRunningJob();
   const queueState = getQueueState();
-  
-  const searchesWithStatus = searches.map(search => {
+
+  const searchesWithStatus = searches.map((search) => {
     const jobs = listJobsForSearch(search.slug);
-    const lastJob = jobs[0]; // Already sorted by date desc
     return {
       ...search,
-      lastJob,
-      jobCount: jobs.filter(j => j.status === "completed").length,
+      lastJob: jobs[0],
+      jobCount: jobs.filter((j) => j.status === "completed").length,
     };
   });
 
-  const html = layout("Dashboard", homePage({
+  return c.html(layout("Dashboard", homePage({
     searches: searchesWithStatus,
     runningJob: running,
     queuedCount: queueState.queue.length,
-  }));
-  return c.html(html);
+  })));
 });
 
-// Search detail page
+app.get("/add", (c) => c.html(layout("Add Search", addSearchForm())));
+
 app.get("/search/:slug", (c) => {
   const slug = c.req.param("slug");
   const search = getSearch(slug);
-  
   if (!search) {
-    return c.html(layout("Not Found", `
-      <div class="text-center py-12">
-        <h1 class="text-2xl font-bold text-gray-900 mb-4">Search not found</h1>
-        <a href="/" class="text-blue-600 hover:text-blue-800">Back to Dashboard</a>
-      </div>
-    `), 404);
+    return c.html(layout("Not Found", `<div class="text-center py-12">
+      <h1 class="text-2xl font-bold mb-4">Search not found</h1>
+      <a href="/" class="text-blue-600">Back</a>
+    </div>`), 404);
   }
 
   const jobs = listJobsForSearch(slug);
-  const runningJob = jobs.find(j => j.status === "running");
-
-  const html = layout(search.name, searchPage({ search, jobs, runningJob }));
-  return c.html(html);
+  const runningJob = jobs.find((j) => j.status === "running");
+  return c.html(layout(search.name, searchPage({ search, jobs, runningJob })));
 });
 
-// Report page
 app.get("/search/:slug/:jobId", (c) => {
   const slug = c.req.param("slug");
   const jobId = c.req.param("jobId");
-  
   const search = getSearch(slug);
-  if (!search) {
-    return c.html(layout("Not Found", "<p>Search not found</p>"), 404);
-  }
+  if (!search) return c.html(layout("Not Found", "<p>Search not found</p>"), 404);
 
   const job = getJob(slug, jobId);
-  if (!job) {
-    return c.html(layout("Not Found", "<p>Job not found</p>"), 404);
+  if (!job) return c.html(layout("Not Found", "<p>Job not found</p>"), 404);
+
+  // If running, show live status with tmux command
+  if (job.status === "running") {
+    const attachCmd = getAttachCommand(job.id);
+    return c.html(layout(`${search.name} - Running`, `
+      <div class="max-w-2xl mx-auto py-12">
+        <h1 class="text-2xl font-bold mb-4">Job Running</h1>
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+            <span class="font-medium">In progress...</span>
+          </div>
+          <p class="text-sm text-gray-600 mb-2">Watch live:</p>
+          <code class="block bg-gray-900 text-green-400 p-3 rounded font-mono text-sm">${escapeHtml(attachCmd)}</code>
+          <p class="text-xs text-gray-500 mt-2">Ctrl+B, D to detach</p>
+        </div>
+        <div hx-get="/search/${slug}/${jobId}" hx-trigger="every 5s" hx-swap="innerHTML" hx-target="body"></div>
+        <a href="/search/${slug}" class="text-blue-600">Back</a>
+      </div>
+    `));
   }
 
   const report = getJobReport(slug, jobId);
   if (!report) {
     return c.html(layout("No Report", `
       <div class="text-center py-12">
-        <h1 class="text-xl font-bold text-gray-900 mb-4">No report available</h1>
-        <p class="text-gray-600 mb-4">This job may still be running or failed to generate a report.</p>
-        <a href="/search/${slug}" class="text-blue-600 hover:text-blue-800">Back to ${search.name}</a>
+        <h1 class="text-xl font-bold mb-4">No report</h1>
+        <p class="text-gray-600 mb-4">${job.error || "Job failed"}</p>
+        <a href="/search/${slug}" class="text-blue-600">Back</a>
       </div>
     `));
   }
 
-  const html = layout(`${search.name} Report`, reportPage({ search, job, report }));
-  return c.html(html);
+  return c.html(layout(`${search.name} Report`, reportPage({ search, job, report })));
 });
 
-// Generate a short name from a prompt using opencode
-async function generateNameFromPrompt(prompt: string): Promise<string> {
-  const { execSync } = await import("child_process");
-  const { findOpencodeBinary } = await import("../core/paths");
-  
-  try {
-    const opencode = findOpencodeBinary();
-    const escaped = prompt.replace(/"/g, '\\"').replace(/\n/g, ' ');
-    
-    const result = execSync(
-      `${opencode} run "Generate a 1-3 word title for this marketplace search. Reply with ONLY the title, nothing else: ${escaped}"`,
-      { 
-        encoding: "utf-8",
-        timeout: 15000,
-        cwd: process.cwd(),
-      }
-    );
-    
-    // Extract the title from opencode output - look for the last non-empty line
-    const lines = result.trim().split("\n").filter(l => l.trim());
-    const title = lines[lines.length - 1]?.trim() || "";
-    
-    // Clean up
-    return title.replace(/["'`]/g, "").substring(0, 40) || "search";
-  } catch {
-    // Fallback: extract main noun from prompt
-    const words = prompt.split(/\s+/).slice(0, 2).join(" ");
-    return words.substring(0, 30) || "search";
-  }
-}
+// === API ===
 
-// API: Create a new search
 app.post("/api/search", async (c) => {
   try {
     const body = await c.req.parseBody();
     const prompt = body.prompt as string;
     const location = (body.location as string) || "San Francisco";
 
-    if (!prompt) {
-      return c.html(`
-        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
-          Please describe what you're looking for.
-        </div>
-      `, 400);
-    }
+    if (!prompt) return c.html(`<div class="text-red-600">Describe what you're looking for</div>`, 400);
 
-    // Auto-generate name from prompt using AI
     const name = await generateNameFromPrompt(prompt);
-    const slug = slugify(name);
-    
-    // If slug already exists, add a number
-    let finalSlug = slug;
+    let slug = slugify(name);
     let counter = 2;
-    while (searchExists(finalSlug)) {
-      finalSlug = `${slug}-${counter}`;
-      counter++;
-    }
+    while (searchExists(slug)) slug = `${slugify(name)}-${counter++}`;
 
-    const search = createSearch({ 
-      name: finalSlug === slug ? name : `${name} ${counter - 1}`, 
-      prompt, 
-      location 
-    });
-    
-    // Return redirect header for HTMX
+    const search = createSearch({ name: counter > 2 ? `${name} ${counter - 1}` : name, prompt, location });
     c.header("HX-Redirect", `/search/${search.slug}`);
-    return c.html(`<div>Created! Redirecting...</div>`);
+    return c.html(`<div>Created!</div>`);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return c.html(`
-      <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
-        Error: ${message}
-      </div>
-    `, 500);
+    return c.html(`<div class="text-red-600">Error: ${error instanceof Error ? error.message : "Unknown"}</div>`, 500);
   }
 });
 
-// API: Get raw markdown
-app.get("/api/search/:slug/:jobId/raw", (c) => {
-  const slug = c.req.param("slug");
-  const jobId = c.req.param("jobId");
-  
-  const report = getJobReport(slug, jobId);
-  if (!report) {
-    return c.text("Report not found", 404);
-  }
-
-  return c.text(report, 200, {
-    "Content-Type": "text/markdown; charset=utf-8",
-  });
-});
-
-// API: Run a search
 app.post("/api/search/:slug/run", async (c) => {
   const slug = c.req.param("slug");
   const search = getSearch(slug);
-  
-  if (!search) {
-    return c.json({ error: "Search not found" }, 404);
-  }
+  if (!search) return c.json({ error: "Not found" }, 404);
 
   try {
     const job = await startJob(slug);
-    return c.json({ 
-      success: true, 
-      jobId: job.id,
-      status: job.status,
-    });
+    return c.json({ success: true, jobId: job.id, status: job.status });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return c.json({ error: message }, 500);
+    return c.json({ error: error instanceof Error ? error.message : "Unknown" }, 500);
   }
 });
 
-// API: Cancel a running or queued job
-app.post("/api/job/:slug/:jobId/cancel", async (c) => {
+app.post("/api/search/:slug/schedule", async (c) => {
   const slug = c.req.param("slug");
-  const jobId = c.req.param("jobId");
+  const body = await c.req.parseBody();
+  const schedule = body.schedule as string;
 
   try {
-    cancelJob(slug, jobId);
-    c.header("HX-Redirect", `/search/${slug}`);
-    return c.html(`<div>Cancelled! Redirecting...</div>`);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return c.json({ error: message }, 500);
-  }
-});
-
-// API: Clear all queued jobs
-app.post("/api/queue/clear", async (c) => {
-  try {
-    clearQueue();
+    updateSearch(slug, { schedule: schedule || undefined });
     c.header("HX-Refresh", "true");
-    return c.html(`<div>Queue cleared!</div>`);
+    return c.html(`<div>Schedule updated</div>`);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return c.json({ error: message }, 500);
+    return c.json({ error: error instanceof Error ? error.message : "Unknown" }, 500);
   }
 });
 
-// API: Delete all jobs
-app.post("/api/jobs/clear", async (c) => {
+app.post("/api/job/:slug/:jobId/cancel", async (c) => {
   try {
-    const searches = listSearches();
-    let deleted = 0;
-    
-    for (const search of searches) {
-      const jobs = listJobsForSearch(search.slug);
-      for (const job of jobs) {
-        if (job.status === "running" || job.status === "queued") {
-          try { cancelJob(search.slug, job.id); } catch {}
-        }
-        try {
-          deleteJob(search.slug, job.id);
-          deleted++;
-        } catch {}
+    cancelJob(c.req.param("slug"), c.req.param("jobId"));
+    c.header("HX-Redirect", `/search/${c.req.param("slug")}`);
+    return c.html(`<div>Cancelled</div>`);
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : "Unknown" }, 500);
+  }
+});
+
+app.get("/api/job/:slug/:jobId/attach", (c) => {
+  return c.json({ command: getAttachCommand(c.req.param("jobId")) });
+});
+
+app.post("/api/sync", async (c) => {
+  let fixed = 0;
+  const jobs = listAllJobs(50);
+  const queueState = getQueueState();
+
+  for (const job of jobs) {
+    if (job.status === "running" && !tmuxSessionExists(getTmuxSessionName(job.id))) {
+      const reportPath = getJobReportPath(job.searchSlug, job.id);
+      const hasReport = existsSync(reportPath) && readFileSync(reportPath, "utf-8").trim().length > 100;
+      updateJob(job.searchSlug, job.id, {
+        status: hasReport ? "completed" : "failed",
+        completedAt: new Date().toISOString(),
+        error: hasReport ? undefined : "No report.md",
+      });
+      fixed++;
+    } else if (job.status === "failed") {
+      const reportPath = getJobReportPath(job.searchSlug, job.id);
+      if (existsSync(reportPath) && readFileSync(reportPath, "utf-8").trim().length > 100) {
+        updateJob(job.searchSlug, job.id, { status: "completed", error: undefined });
+        fixed++;
       }
     }
-    
-    clearQueue();
-    
-    c.header("HX-Refresh", "true");
-    return c.html(`<div>Deleted ${deleted} jobs!</div>`);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return c.json({ error: message }, 500);
   }
+
+  if (queueState.currentJobId && !tmuxSessionExists(getTmuxSessionName(queueState.currentJobId))) {
+    setCurrentJob(undefined);
+    fixed++;
+  }
+
+  c.header("HX-Refresh", "true");
+  return c.html(`<div>Fixed ${fixed}</div>`);
 });
 
-// API: Get search status (for HTMX polling)
+app.post("/api/jobs/clear", async (c) => {
+  let deleted = 0;
+  for (const search of listSearches()) {
+    for (const job of listJobsForSearch(search.slug)) {
+      if (job.status === "running" || job.status === "queued") try { cancelJob(search.slug, job.id); } catch {}
+      try { deleteJob(search.slug, job.id); deleted++; } catch {}
+    }
+  }
+  clearQueue();
+  c.header("HX-Refresh", "true");
+  return c.html(`<div>Deleted ${deleted}</div>`);
+});
+
+app.get("/api/status", (c) => {
+  const running = getRunningJob();
+  return c.json({ running: running ? { searchSlug: running.searchSlug, jobId: running.job.id } : null });
+});
+
 app.get("/api/search/:slug/status", (c) => {
   const slug = c.req.param("slug");
   const jobs = listJobsForSearch(slug);
-  const runningJob = jobs.find(j => j.status === "running");
+  const runningJob = jobs.find((j) => j.status === "running");
 
   if (runningJob) {
+    const cmd = getAttachCommand(runningJob.id);
     return c.html(`
-      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6" 
-           hx-get="/api/search/${slug}/status" 
-           hx-trigger="every 5s"
-           hx-swap="outerHTML">
-        <div class="flex items-center gap-3">
-          <div class="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-          <span class="font-medium text-blue-900">Job running: ${runningJob.id.slice(0, 8)}</span>
-          <span class="text-blue-600 text-sm">${formatRelativeTime(runningJob.createdAt)}</span>
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6"
+           hx-get="/api/search/${slug}/status" hx-trigger="every 3s" hx-swap="outerHTML">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+            <span class="font-medium">Running: ${runningJob.id.slice(0, 8)}</span>
+          </div>
+          <code class="text-xs bg-gray-100 px-2 py-1 rounded">${escapeHtml(cmd)}</code>
         </div>
       </div>
     `);
   }
 
-  // No running job - check if there's a recent completion
-  const recentCompleted = jobs.find(j => j.status === "completed");
-  if (recentCompleted) {
-    // Trigger a page reload to show the new report
-    return c.html(`
-      <div id="status-area" hx-trigger="load" hx-on::load="window.location.reload()"></div>
-    `);
+  if (jobs.find((j) => j.status === "completed")) {
+    return c.html(`<div hx-trigger="load" hx-on::load="window.location.reload()"></div>`);
   }
 
   return c.html(`<div id="status-area"></div>`);
 });
 
-// API: Sync stuck jobs
-app.post("/api/sync", async (c) => {
-  try {
-    const jobs = listAllJobs(50);
-    const queueState = getQueueState();
-    let fixed = 0;
-
-    for (const job of jobs) {
-      if (job.status === "running") {
-        const sessionName = getTmuxSessionName(job.id);
-        const sessionExists = tmuxSessionExists(sessionName);
-
-        if (!sessionExists) {
-          const log = getJobLog(job.searchSlug, job.id);
-          const report = extractReportFromLog(log);
-
-          if (report && report.length > 100) {
-            saveJobReport(job.searchSlug, job.id, report);
-            updateJob(job.searchSlug, job.id, {
-              status: "completed",
-              completedAt: new Date().toISOString(),
-            });
-            fixed++;
-          } else {
-            updateJob(job.searchSlug, job.id, {
-              status: "failed",
-              completedAt: new Date().toISOString(),
-              error: "Session ended without generating report",
-            });
-            fixed++;
-          }
-        }
-      }
-    }
-
-    // Clear current job if it's not actually running
-    if (queueState.currentJobId) {
-      const sessionName = getTmuxSessionName(queueState.currentJobId);
-      if (!tmuxSessionExists(sessionName)) {
-        setCurrentJob(undefined);
-        fixed++;
-      }
-    }
-
-    c.header("HX-Refresh", "true");
-    return c.html(`<div>Synced! Fixed ${fixed} job(s).</div>`);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return c.json({ error: message }, 500);
-  }
+app.get("/api/search/:slug/:jobId/raw", (c) => {
+  const report = getJobReport(c.req.param("slug"), c.req.param("jobId"));
+  if (!report) return c.text("Not found", 404);
+  return c.text(report, 200, { "Content-Type": "text/markdown" });
 });
 
-// Extract report from output log
-function extractReportFromLog(log: string): string {
-  const lines = log.split("\n");
-  let reportLines: string[] = [];
-  let inReport = false;
+// === SCHEDULER ===
 
-  for (const line of lines) {
-    const cleanLine = line.replace(/\x1b\[[0-9;]*m/g, "").trim();
+let schedulerInterval: ReturnType<typeof setInterval> | null = null;
 
-    // Start at any markdown header (# or ##)
-    if (cleanLine.match(/^#{1,2} /) && !inReport) {
-      inReport = true;
-      reportLines = [cleanLine];
-    } else if (inReport) {
-      // Skip tool calls
-      if (cleanLine.match(/^\|  \w+_/) || cleanLine.startsWith("$ ") || cleanLine.startsWith("bun run")) {
-        continue;
-      }
-      // Stop at end markers
-      if (cleanLine.includes("opencode") && cleanLine.includes("session")) {
-        break;
-      }
-      reportLines.push(cleanLine);
+function parseScheduleMinutes(schedule: string): number | null {
+  const match = schedule.match(/^(\d+)(m|h)$/);
+  if (!match) return null;
+  const [, num, unit] = match;
+  return unit === "h" ? parseInt(num) * 60 : parseInt(num);
+}
+
+function shouldRunSearch(search: Search): boolean {
+  if (!search.schedule) return false;
+  const intervalMins = parseScheduleMinutes(search.schedule);
+  if (!intervalMins) return false;
+
+  const jobs = listJobsForSearch(search.slug);
+  const lastCompleted = jobs.find((j) => j.status === "completed");
+  if (!lastCompleted?.completedAt) return true;
+
+  const diffMins = (Date.now() - new Date(lastCompleted.completedAt).getTime()) / 60000;
+  return diffMins >= intervalMins;
+}
+
+function runScheduler() {
+  const searches = listSearches().filter((s) => s.schedule);
+  if (getRunningJob()) return;
+
+  for (const search of searches) {
+    if (shouldRunSearch(search)) {
+      console.log(`[scheduler] Starting: ${search.slug}`);
+      startJob(search.slug).catch(console.error);
+      break;
     }
   }
-
-  return reportLines.join("\n").trim();
 }
 
-// API: Overall status (for dashboard polling)
-app.get("/api/status", (c) => {
-  const running = getRunningJob();
-  const searches = listSearches();
-  
-  return c.json({
-    running: running ? {
-      searchSlug: running.searchSlug,
-      jobId: running.job.id,
-      startedAt: running.job.startedAt,
-    } : null,
-    searchCount: searches.length,
-  });
-});
-
-function formatRelativeTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMins / 60);
-
-  if (diffMins < 1) return "just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  return date.toLocaleDateString();
+function startScheduler() {
+  if (schedulerInterval) return;
+  console.log("[scheduler] Started");
+  schedulerInterval = setInterval(runScheduler, 60000);
+  runScheduler();
 }
 
-// Start server
+// === SERVER ===
+
 const port = parseInt(process.env.PORT || "3456");
+const enableScheduler = process.env.SCHEDULER !== "false";
+
+if (enableScheduler) startScheduler();
 
 console.log(`
-🛒 Marketplace Tracker Web UI
-   http://localhost:${port}
-   
-   Press Ctrl+C to stop
+Marketplace Tracker
+  http://localhost:${port}
+  Scheduler: ${enableScheduler ? "on" : "off"}
 `);
 
-export default {
-  port,
-  fetch: app.fetch,
-};
+export default { port, fetch: app.fetch };

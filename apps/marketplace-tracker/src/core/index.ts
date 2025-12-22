@@ -1,7 +1,5 @@
 /**
  * marketplace-tracker core
- *
- * Unix-style primitives for marketplace search automation
  */
 
 // Types
@@ -25,6 +23,7 @@ export {
   findOpencodeBinary,
   findProjectRoot,
   ensureDir,
+  ensureDataDirs,
 } from "./paths";
 
 // Search store
@@ -54,6 +53,7 @@ export {
   addToQueue,
   removeFromQueue,
   setCurrentJob,
+  clearQueue,
 } from "./job-store";
 
 // Job runner
@@ -62,6 +62,7 @@ export {
   getTmuxSessionName,
   tmuxSessionExists,
   listTmuxSessions,
+  getAttachCommand,
   startJob,
   attachToJob,
   cancelJob,
