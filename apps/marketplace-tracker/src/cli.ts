@@ -2,15 +2,17 @@
 /**
  * mkt - Marketplace Tracker CLI
  *
- * Facebook Marketplace deal finder built on opencode-job-runner
+ * Facebook Marketplace deal finder built on openjob
+ * 
+ * This is a thin wrapper that sets the data directory and starts the openjob TUI.
  */
 import { join, dirname } from "path";
-import { setDataDir } from "opencode-job-runner";
+import { setDataDir } from "openjob";
 
 // Set data directory to ./data relative to this app
 const appDir = dirname(dirname(new URL(import.meta.url).pathname));
 setDataDir(join(appDir, "data"));
 
-// Import and run the CLI (dynamic import after setDataDir)
-const { main } = await import("opencode-job-runner/cli");
-main();
+// Start the server instead of CLI
+console.log("Use 'pnpm --filter @digital-empire/marketplace-tracker serve' to start the server");
+console.log("Or run 'openjob' in the marketplace-tracker directory for the interactive CLI");

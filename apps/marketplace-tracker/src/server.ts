@@ -14,17 +14,23 @@ import {
   listSearches,
   getSearch,
   createSearch,
+  updateSearch,
+  deleteSearch,
   slugify,
   searchExists,
   getPrompt,
   listJobsForSearch,
+  getJob,
   getJobReport,
+  updateJob,
   startJob,
   getRunningJob,
   cancelJob,
   getQueueState,
   ensureDataDirs,
-} from "opencode-job-runner";
+  getAttachCommand,
+  startScheduler,
+} from "openjob";
 
 // Set data directory to ./data relative to this app
 const appDir = dirname(dirname(new URL(import.meta.url).pathname));
@@ -83,11 +89,27 @@ async function sendTelegramMessage(config: AppConfig, message: string): Promise<
   }
 }
 
+// Job completion handler - only notifies on failures now
+// Success notifications are handled by the @telegram agent in the prompt
+function getJobCompletionHandler(searchName: string) {
+  return async (result: { job: { status: string }; report?: string }) => {
+    const config = getConfig();
+    if (!config.telegramBotToken || !config.telegramChatId) return;
+    
+    // Only send failure notifications from the server
+    // Success notifications are sent by the @telegram agent
+    if (result.job.status === "failed") {
+      await sendTelegramMessage(config, `❌ Search failed: <b>${escapeHtml(searchName)}</b>`);
+    }
+  };
+}
+
 // === PROMPT BUILDER ===
 
 function buildPrompt(searchTerm: string, config: AppConfig): string {
-  // Always use @fb-marketplace - telegram is handled separately by the server
-  return `@fb-marketplace
+  const hasTelegram = !!(config.telegramBotToken && config.telegramChatId);
+  
+  let prompt = `@fb-marketplace
 
 Search for deals on Facebook Marketplace.
 
@@ -103,13 +125,116 @@ Write a markdown report with:
 - **What to Avoid** (overpriced or sketchy listings)
 
 Save the report to: {{reportPath}}
+
+---
+
+@title
+
+Generate a concise title for this search job.
+
+- Original search term: "${searchTerm}"
+- Location: ${config.location}
+- Report path: {{reportPath}}
+- Search slug: {{searchSlug}}
+- Job ID: {{jobId}}
+
+Read the report and generate a short, descriptive title (max 50 chars).
+Save it via: POST http://localhost:3456/api/job/{{searchSlug}}/{{jobId}}/title
 `;
+
+  // If Telegram is configured, add the @telegram agent to send a summary
+  if (hasTelegram) {
+    prompt += `
+---
+
+@telegram
+
+Send a Telegram notification with the top 3-5 deals.
+Read the report from {{reportPath}} and send a concise summary.
+
+First, get the job title:
+\`\`\`bash
+curl -s http://localhost:3456/api/job/{{searchSlug}}/{{jobId}}/title
+\`\`\`
+
+Use that title as the header. Include:
+- Best deals with prices and Facebook links
+- Keep it short and scannable
+`;
+  }
+
+  return prompt;
 }
 
 // === HELPERS ===
 
 function escapeHtml(str: string): string {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/**
+ * Convert cron expression to human-readable format
+ * Handles common presets we use in the schedule dropdown
+ */
+function formatSchedule(cron: string): string {
+  if (!cron) return "Not scheduled";
+  
+  // Map common cron patterns to readable strings
+  const patterns: Record<string, string> = {
+    "0 */2 * * *": "Every 2 hours",
+    "0 */4 * * *": "Every 4 hours",
+    "0 */6 * * *": "Every 6 hours",
+    "0 */12 * * *": "Every 12 hours",
+    "0 7 * * *": "Daily at 7 AM",
+    "0 9 * * *": "Daily at 9 AM",
+    "0 12 * * *": "Daily at 12 PM",
+    "0 18 * * *": "Daily at 6 PM",
+    "0 21 * * *": "Daily at 9 PM",
+    "0 9 * * 1": "Weekly on Monday at 9 AM",
+    "0 9 * * 6": "Weekly on Saturday at 9 AM",
+  };
+  
+  if (patterns[cron]) {
+    return patterns[cron];
+  }
+  
+  // Try to parse the cron expression for unknown patterns
+  const parts = cron.split(" ");
+  if (parts.length !== 5) return cron;
+  
+  const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
+  
+  // Simple patterns
+  if (month === "*" && dayOfMonth === "*") {
+    // Hourly intervals
+    if (hour.startsWith("*/")) {
+      const interval = hour.slice(2);
+      return `Every ${interval} hour${interval === "1" ? "" : "s"}`;
+    }
+    
+    // Daily at specific hour
+    if (dayOfWeek === "*" && !hour.includes("*") && !hour.includes("/")) {
+      const h = parseInt(hour, 10);
+      const ampm = h >= 12 ? "PM" : "AM";
+      const displayHour = h > 12 ? h - 12 : h === 0 ? 12 : h;
+      return `Daily at ${displayHour} ${ampm}`;
+    }
+    
+    // Weekly on specific day
+    if (dayOfWeek !== "*" && !hour.includes("*")) {
+      const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      const dayNum = parseInt(dayOfWeek, 10);
+      const h = parseInt(hour, 10);
+      const ampm = h >= 12 ? "PM" : "AM";
+      const displayHour = h > 12 ? h - 12 : h === 0 ? 12 : h;
+      if (dayNum >= 0 && dayNum <= 6) {
+        return `Weekly on ${days[dayNum]} at ${displayHour} ${ampm}`;
+      }
+    }
+  }
+  
+  // Fallback to raw cron
+  return cron;
 }
 
 function formatRelativeTime(dateStr: string): string {
@@ -176,14 +301,16 @@ app.get("/", (c) => {
     const jobs = listJobsForSearch(search.slug);
     const lastJob = jobs[0];
     const status = lastJob?.status || "new";
+    // Use job title if available, otherwise fall back to search name
+    const displayTitle = lastJob?.title || search.name;
     
     return `
-      <a href="/search/${search.slug}" class="flex items-center justify-between p-3 bg-white rounded-lg border hover:shadow-sm transition-shadow">
-        <div>
-          <span class="font-medium text-gray-900">${escapeHtml(search.name)}</span>
-          <span class="text-sm text-gray-500 ml-2">${lastJob ? formatRelativeTime(lastJob.createdAt) : "never run"}</span>
+      <a href="/search/${search.slug}" class="flex items-start justify-between gap-3 p-3 bg-white rounded-lg border hover:shadow-sm transition-shadow">
+        <div class="min-w-0 flex-1">
+          <div class="font-medium text-gray-900 break-words">${escapeHtml(displayTitle)}</div>
+          <div class="text-sm text-gray-500 mt-1">${lastJob ? formatRelativeTime(lastJob.createdAt) : "never run"}${search.schedule ? ` · <span class="text-purple-600">⏰ ${formatSchedule(search.schedule)}</span>` : ""}</div>
         </div>
-        <span class="text-xs px-2 py-1 rounded-full ${
+        <span class="flex-shrink-0 text-xs px-2 py-1 rounded-full ${
           status === "running" ? "bg-blue-100 text-blue-700" :
           status === "completed" ? "bg-green-100 text-green-700" :
           status === "failed" ? "bg-red-100 text-red-700" :
@@ -195,38 +322,45 @@ app.get("/", (c) => {
 
   const content = `
     ${running ? `
-      <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-          <span class="text-blue-900">Running: <strong>${escapeHtml(running.searchSlug)}</strong></span>
+      <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-3">
+            <div class="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+            <span class="text-blue-900">Running: <strong>${escapeHtml(running.searchSlug)}</strong></span>
+          </div>
+          <button 
+            hx-post="/api/cancel/${running.searchSlug}/${running.job.id}"
+            hx-swap="none"
+            class="text-sm px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200">
+            Stop
+          </button>
         </div>
-        <button 
-          hx-post="/api/cancel/${running.searchSlug}/${running.job.id}"
-          hx-swap="none"
-          class="text-sm px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200">
-          Stop
-        </button>
+        <div class="text-xs text-blue-800 font-mono bg-blue-100 p-2 rounded">
+          Watch live: <code class="select-all">${getAttachCommand(running.job.id)}</code>
+        </div>
       </div>
     ` : ""}
 
     <div class="bg-white rounded-xl shadow-sm border p-6 mb-8">
       <h2 class="text-lg font-semibold text-gray-900 mb-4">🔍 New Search</h2>
-      <form hx-post="/api/search" hx-target="#search-result" hx-swap="innerHTML">
+      <form hx-post="/api/search" hx-target="#search-result" hx-swap="innerHTML" id="search-form">
         <div class="flex gap-3">
-          <input 
-            type="text" 
+          <textarea 
             name="searchTerm" 
             placeholder="e.g., standing desk under $300"
             required
-            class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-lg"
-          />
+            rows="2"
+            class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-lg resize-none"
+            onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); this.form.requestSubmit(); }"
+          ></textarea>
           <button 
             type="submit" 
-            class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
+            class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium self-end">
             Search
           </button>
         </div>
         <p class="text-sm text-gray-500 mt-2">
+          <span class="text-gray-400">Shift+Enter for new line</span> · 
           Location: <strong>${escapeHtml(config.location || "sanfrancisco")}</strong>
           ${hasTelegram ? ` · Telegram: <strong class="text-green-600">✓ enabled</strong>` : ` · <a href="/settings" class="text-blue-600 underline">Enable Telegram notifications</a>`}
         </p>
@@ -349,20 +483,87 @@ app.get("/search/:slug", (c) => {
   const jobs = listJobsForSearch(slug);
   const latestJob = jobs[0];
   const report = latestJob ? getJobReport(slug, latestJob.id) : null;
+  
+  // Use job title if available, otherwise fall back to search name
+  const displayTitle = latestJob?.title || search.name;
 
   const content = `
     <div class="mb-4">
       <a href="/" class="text-blue-600 hover:text-blue-800 text-sm">&larr; Back</a>
     </div>
 
-    <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold text-gray-900">${escapeHtml(search.name)}</h1>
-      <button 
-        hx-post="/api/run/${slug}"
-        hx-swap="none"
-        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
-        Run Again
-      </button>
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-gray-900 break-words mb-4">${escapeHtml(displayTitle)}</h1>
+      ${latestJob?.title ? `
+        <p class="text-sm text-gray-500 mb-2">Original search: ${escapeHtml(search.name)}</p>
+      ` : ""}
+      <div class="flex flex-wrap items-center gap-2">
+        <button 
+          hx-post="/api/run/${slug}"
+          hx-swap="none"
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
+          Run Again
+        </button>
+        <button 
+          hx-post="/api/search/${slug}/delete"
+          hx-swap="none"
+          hx-confirm="Delete this search and all its reports?"
+          class="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 font-medium">
+          Delete
+        </button>
+      </div>
+    </div>
+    
+    <!-- Schedule -->
+    <div class="mb-6 p-4 bg-gray-50 rounded-lg border">
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-medium text-gray-700">Schedule</span>
+          ${search.schedule ? `
+            <span class="text-sm text-purple-600 font-medium">${formatSchedule(search.schedule)}</span>
+          ` : `
+            <span class="text-sm text-gray-400">Not scheduled</span>
+          `}
+        </div>
+        
+        <form hx-post="/api/search/${slug}/schedule" hx-swap="none" class="flex flex-wrap items-center gap-2">
+          <!-- Quick presets -->
+          <select name="schedule" class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white">
+            <option value="">No schedule</option>
+            <optgroup label="Every few hours">
+              <option value="0 */2 * * *" ${search.schedule === "0 */2 * * *" ? "selected" : ""}>Every 2 hours</option>
+              <option value="0 */4 * * *" ${search.schedule === "0 */4 * * *" ? "selected" : ""}>Every 4 hours</option>
+              <option value="0 */6 * * *" ${search.schedule === "0 */6 * * *" ? "selected" : ""}>Every 6 hours</option>
+              <option value="0 */12 * * *" ${search.schedule === "0 */12 * * *" ? "selected" : ""}>Every 12 hours</option>
+            </optgroup>
+            <optgroup label="Daily">
+              <option value="0 7 * * *" ${search.schedule === "0 7 * * *" ? "selected" : ""}>Daily at 7 AM</option>
+              <option value="0 9 * * *" ${search.schedule === "0 9 * * *" ? "selected" : ""}>Daily at 9 AM</option>
+              <option value="0 12 * * *" ${search.schedule === "0 12 * * *" ? "selected" : ""}>Daily at 12 PM</option>
+              <option value="0 18 * * *" ${search.schedule === "0 18 * * *" ? "selected" : ""}>Daily at 6 PM</option>
+              <option value="0 21 * * *" ${search.schedule === "0 21 * * *" ? "selected" : ""}>Daily at 9 PM</option>
+            </optgroup>
+            <optgroup label="Weekly">
+              <option value="0 9 * * 1" ${search.schedule === "0 9 * * 1" ? "selected" : ""}>Weekly on Monday 9 AM</option>
+              <option value="0 9 * * 6" ${search.schedule === "0 9 * * 6" ? "selected" : ""}>Weekly on Saturday 9 AM</option>
+            </optgroup>
+          </select>
+          
+          <button type="submit" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            Save
+          </button>
+          
+          ${search.schedule ? `
+            <button type="button" 
+              hx-post="/api/search/${slug}/schedule" 
+              hx-vals='{"schedule": ""}'
+              hx-swap="none"
+              class="px-3 py-2 text-sm text-red-600 hover:text-red-700">
+              Remove
+            </button>
+          ` : ""}
+        </form>
+      </div>
     </div>
 
     ${latestJob ? `
@@ -374,9 +575,21 @@ app.get("/search/:slug", (c) => {
           latestJob.status === "failed" ? "text-red-600" : "text-gray-600"
         }">${latestJob.status}</span>
       </div>
+      ${latestJob.status === "running" ? `
+        <div class="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div class="text-xs text-blue-800 font-mono">
+            Watch live: <code class="select-all bg-blue-100 px-2 py-1 rounded">${getAttachCommand(latestJob.id)}</code>
+          </div>
+        </div>
+      ` : ""}
     ` : `
       <div class="mb-6 text-sm text-gray-600">Never run yet</div>
     `}
+
+    <details class="mb-6">
+      <summary class="text-sm text-gray-500 cursor-pointer hover:text-gray-700">View prompt</summary>
+      <pre class="mt-2 p-4 bg-gray-100 rounded-lg text-xs overflow-x-auto whitespace-pre-wrap">${escapeHtml(getPrompt(slug) || "No prompt found")}</pre>
+    </details>
 
     ${report ? `
       <div class="bg-white rounded-xl shadow-sm border p-6">
@@ -409,7 +622,7 @@ app.get("/search/:slug", (c) => {
     ` : ""}
   `;
 
-  return c.html(layout(search.name, content));
+  return c.html(layout(displayTitle, content));
 });
 
 // === API ===
@@ -436,9 +649,11 @@ app.post("/api/search", async (c) => {
   const prompt = buildPrompt(searchTerm, config);
   const search = createSearch({ name: searchTerm, prompt });
 
-  // Start the job immediately
+  // Start the job immediately with Telegram notification on completion
   try {
-    await startJob(search.slug);
+    await startJob(search.slug, {
+      onComplete: getJobCompletionHandler(searchTerm),
+    });
     c.header("HX-Redirect", `/search/${search.slug}`);
     return c.html(`<div class="text-green-600">Search started!</div>`);
   } catch (error) {
@@ -470,11 +685,53 @@ app.post("/api/test-telegram", async (c) => {
   }
 });
 
+// Telegram API endpoint - called by @telegram agent
+app.post("/api/telegram/send", async (c) => {
+  const config = getConfig();
+  
+  if (!config.telegramBotToken || !config.telegramChatId) {
+    return c.json({ success: false, error: "Telegram not configured" }, 400);
+  }
+  
+  try {
+    const body = await c.req.json();
+    const message = body.message as string;
+    
+    if (!message) {
+      return c.json({ success: false, error: "message is required" }, 400);
+    }
+    
+    // Send as HTML to support links and formatting
+    const sent = await sendTelegramMessage(config, message);
+    
+    if (sent) {
+      return c.json({ success: true });
+    } else {
+      return c.json({ success: false, error: "Failed to send message" }, 500);
+    }
+  } catch (error) {
+    return c.json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : "Unknown error" 
+    }, 500);
+  }
+});
+
+// Check if Telegram is configured - agents can call this first
+app.get("/api/telegram/status", (c) => {
+  const config = getConfig();
+  const configured = !!(config.telegramBotToken && config.telegramChatId);
+  return c.json({ configured });
+});
+
 // Run a search
 app.post("/api/run/:slug", async (c) => {
   const slug = c.req.param("slug");
+  const search = getSearch(slug);
   try {
-    await startJob(slug);
+    await startJob(slug, {
+      onComplete: getJobCompletionHandler(search?.name || slug),
+    });
     c.header("HX-Refresh", "true");
     return c.html(`<div>Started</div>`);
   } catch (error) {
@@ -490,6 +747,79 @@ app.post("/api/cancel/:slug/:jobId", async (c) => {
     return c.html(`<div>Cancelled</div>`);
   } catch (error) {
     return c.html(`<div class="text-red-600">${error instanceof Error ? error.message : "Error"}</div>`, 500);
+  }
+});
+
+// Delete a search
+app.post("/api/search/:slug/delete", async (c) => {
+  try {
+    const slug = c.req.param("slug");
+    // Cancel any running job for this search first
+    const running = getRunningJob();
+    if (running && running.searchSlug === slug) {
+      cancelJob(slug, running.job.id);
+    }
+    deleteSearch(slug);
+    c.header("HX-Redirect", "/");
+    return c.html(`<div>Deleted</div>`);
+  } catch (error) {
+    return c.html(`<div class="text-red-600">${error instanceof Error ? error.message : "Error"}</div>`, 500);
+  }
+});
+
+// Set schedule for a search
+app.post("/api/search/:slug/schedule", async (c) => {
+  try {
+    const slug = c.req.param("slug");
+    const body = await c.req.parseBody();
+    const schedule = (body.schedule as string)?.trim() || undefined;
+    updateSearch(slug, { schedule });
+    c.header("HX-Refresh", "true");
+    return c.html(`<div>Schedule updated</div>`);
+  } catch (error) {
+    return c.html(`<div class="text-red-600">${error instanceof Error ? error.message : "Error"}</div>`, 500);
+  }
+});
+
+// === JOB TITLE API ===
+
+// Get job title
+app.get("/api/job/:slug/:jobId/title", (c) => {
+  try {
+    const slug = c.req.param("slug");
+    const jobId = c.req.param("jobId");
+    const job = getJob(slug, jobId);
+    
+    if (!job) {
+      return c.json({ error: "Job not found" }, 404);
+    }
+    
+    return c.json({ title: job.title || null });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : "Error" }, 500);
+  }
+});
+
+// Save job title
+app.post("/api/job/:slug/:jobId/title", async (c) => {
+  try {
+    const slug = c.req.param("slug");
+    const jobId = c.req.param("jobId");
+    const body = await c.req.json() as { title?: string };
+    const title = body.title?.trim();
+    
+    if (!title) {
+      return c.json({ error: "Title is required" }, 400);
+    }
+    
+    if (title.length > 100) {
+      return c.json({ error: "Title too long (max 100 chars)" }, 400);
+    }
+    
+    const job = updateJob(slug, jobId, { title });
+    return c.json({ success: true, title: job.title });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : "Error" }, 500);
   }
 });
 
@@ -517,10 +847,14 @@ function renderMarkdown(md: string): string {
 
 ensureDataDirs();
 
+// Start the scheduler (checks cron schedules every minute)
+startScheduler();
+
 const port = parseInt(process.env.PORT || "3456");
 console.log(`
 🛒 Marketplace Tracker
    http://localhost:${port}
+   Scheduler: on (cron-based)
 `);
 
 export default { port, fetch: app.fetch };

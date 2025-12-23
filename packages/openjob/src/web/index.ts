@@ -35,8 +35,10 @@ import {
   getAttachCommand,
   getJobReportPath,
   ensureDataDirs,
+  startScheduler,
+  stopScheduler,
+  isSchedulerActive,
 } from "../core";
-import type { Search } from "../core/types";
 
 // Note: ensureDataDirs() is called in createServer(), not at module load time
 // This allows apps to call setDataDir() before importing this module
@@ -339,50 +341,6 @@ app.get("/api/search/:slug/:jobId/raw", (c) => {
   return c.text(report, 200, { "Content-Type": "text/markdown" });
 });
 
-// === SCHEDULER ===
-
-let schedulerInterval: ReturnType<typeof setInterval> | null = null;
-
-function parseScheduleMinutes(schedule: string): number | null {
-  const match = schedule.match(/^(\d+)(m|h)$/);
-  if (!match) return null;
-  const [, num, unit] = match;
-  return unit === "h" ? parseInt(num) * 60 : parseInt(num);
-}
-
-function shouldRunSearch(search: Search): boolean {
-  if (!search.schedule) return false;
-  const intervalMins = parseScheduleMinutes(search.schedule);
-  if (!intervalMins) return false;
-
-  const jobs = listJobsForSearch(search.slug);
-  const lastCompleted = jobs.find((j) => j.status === "completed");
-  if (!lastCompleted?.completedAt) return true;
-
-  const diffMins = (Date.now() - new Date(lastCompleted.completedAt).getTime()) / 60000;
-  return diffMins >= intervalMins;
-}
-
-function runScheduler() {
-  const searches = listSearches().filter((s) => s.schedule);
-  if (getRunningJob()) return;
-
-  for (const search of searches) {
-    if (shouldRunSearch(search)) {
-      console.log(`[scheduler] Starting: ${search.slug}`);
-      startJob(search.slug).catch(console.error);
-      break;
-    }
-  }
-}
-
-function startScheduler() {
-  if (schedulerInterval) return;
-  console.log("[scheduler] Started");
-  schedulerInterval = setInterval(runScheduler, 60000);
-  runScheduler();
-}
-
 // === SERVER ===
 
 export function createServer(options: { port?: number; scheduler?: boolean; name?: string } = {}) {
@@ -391,7 +349,7 @@ export function createServer(options: { port?: number; scheduler?: boolean; name
   
   const port = options.port ?? parseInt(process.env.PORT || "3456");
   const enableScheduler = options.scheduler ?? process.env.SCHEDULER !== "false";
-  const name = options.name ?? "Job Runner";
+  const name = options.name ?? "openjob";
 
   if (enableScheduler) startScheduler();
 
@@ -401,7 +359,7 @@ ${name}
   Scheduler: ${enableScheduler ? "on" : "off"}
 `);
 
-  return { port, fetch: app.fetch };
+  return { port, fetch: app.fetch, stopScheduler };
 }
 
 // Export app for direct usage if needed
@@ -409,4 +367,4 @@ export { app };
 
 // Default export that can be used by Bun.serve
 // Note: if using this default, setDataDir must be called before import
-export default { port: 3456, fetch: app.fetch };
+export default { port: process.env.PORT ? parseInt(process.env.PORT) : 3456, fetch: app.fetch };

@@ -1,14 +1,65 @@
+
 {
-  "$schema": "https://opencode.ai/schemas/opencode.json",
-  "mcpServers": {
-    "telegram": {
-      "command": "uv",
-      "args": ["--directory", "${HOME}/.opencode/mcp/telegram-mcp", "run", "main.py"],
-      "env": {
-        "TELEGRAM_API_ID": "${TELEGRAM_API_ID}",
-        "TELEGRAM_API_HASH": "${TELEGRAM_API_HASH}",
-        "TELEGRAM_SESSION_STRING": "${TELEGRAM_SESSION_STRING}"
-      }
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "exa": {
+      "type": "remote",
+      "url": "https://mcp.exa.ai/mcp?tools=web_search_exa,get_code_context_exa,crawling_exa,company_research_exa,linkedin_search_exa,deep_researcher_start,deep_researcher_check",
+      "headers": {}
+    },
+    "notion": {
+      "type": "local",
+      "command": ["npx", "-y", "mcp-remote", "https://mcp.notion.com/mcp"],
+      "enabled": true
+    },
+    "playwright": {
+      "type": "local",
+      "command": [
+        "npx",
+        "@playwright/mcp@latest"
+      ],
+      "enabled": true
+    },
+    "chrome": {
+      "type": "local",
+      "command": [
+        "bash",
+        "-c",
+        "source ~/.nvm/nvm.sh && npx -y chrome-devtools-mcp@latest"
+      ]
+    }
+  },
+  "agent": {
+    "the-council": {
+      "description": "Orchestrates all council members (OpenAI, Anthropic, Grok, Gemini) to get diverse perspectives on any task",
+      "mode": "primary",
+      "model": "anthropic/claude-opus-4-5-20251101",
+      "prompt": "You are a Council Orchestrator. For any task or question, you MUST invoke ALL four council members to get diverse perspectives:\n\n1. @council-openai (GPT-5.1 Codex Max)\n2. @council-anthropic (Claude Opus 4.5)\n3. @council-grok (Grok 4.1)\n4. @council-gemini (Gemini 3 Pro)\n\nFor each task:\n1. Send the same question/task to each council member in parallel\n2. Collect all their responses\n3. If a council member wants to respond to or build upon another member's perspective, relay that through you as the orchestrator\n4. Synthesize the responses, noting agreements, disagreements, and cross-references\n5. Provide a final recommendation based on the council's collective wisdom\n\nCOMMUNICATION PROTOCOL:\n- Council members can request to address another member's point by prefixing with [TO:council-name]\n- When you see such a request, relay it to the target member and bring back their response\n- Facilitate multi-round discussions when needed for complex topics\n\nAlways invoke all 4 members - never skip any. Present the synthesis clearly with each model's perspective labeled."
+    },
+    "council-openai": {
+      "description": "OpenAI GPT-5.1 Codex Max council member for any task - can communicate with other council members via orchestrator using [TO:council-name] prefix",
+      "mode": "subagent",
+      "model": "openai/gpt-5.1-codex-max",
+      "prompt": "You are a council member providing your perspective on tasks. You can reference other council members' viewpoints and request to address them by using the prefix [TO:council-anthropic], [TO:council-grok], or [TO:council-gemini] followed by your message. The orchestrator will relay your message and bring back their response."
+    },
+    "council-anthropic": {
+      "description": "Claude Opus 4.5 council member for any task - can communicate with other council members via orchestrator using [TO:council-name] prefix",
+      "mode": "subagent",
+      "model": "anthropic/claude-opus-4-5-20251101",
+      "prompt": "You are a council member providing your perspective on tasks. You can reference other council members' viewpoints and request to address them by using the prefix [TO:council-openai], [TO:council-grok], or [TO:council-gemini] followed by your message. The orchestrator will relay your message and bring back their response."
+    },
+    "council-grok": {
+      "description": "Grok 4.1 council member for any task - can communicate with other council members via orchestrator using [TO:council-name] prefix",
+      "mode": "subagent",
+      "model": "xai/grok-4.1",
+      "prompt": "You are a council member providing your perspective on tasks. You can reference other council members' viewpoints and request to address them by using the prefix [TO:council-openai], [TO:council-anthropic], or [TO:council-gemini] followed by your message. The orchestrator will relay your message and bring back their response."
+    },
+    "council-gemini": {
+      "description": "Gemini 3 Pro council member for any task - can communicate with other council members via orchestrator using [TO:council-name] prefix",
+      "mode": "subagent",
+      "model": "google/gemini-3-pro-preview",
+      "prompt": "You are a council member providing your perspective on tasks. You can reference other council members' viewpoints and request to address them by using the prefix [TO:council-openai], [TO:council-anthropic], or [TO:council-grok] followed by your message. The orchestrator will relay your message and bring back their response."
     }
   }
 }
+

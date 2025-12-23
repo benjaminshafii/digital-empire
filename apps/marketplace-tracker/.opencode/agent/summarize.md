@@ -42,17 +42,9 @@ Wait for results.
 Take the top deals and format them as a concise message:
 
 ```
-🛒 FB Marketplace Deals: {search_term}
+🛒 FB Marketplace Deals: summarized search term
 
-Top Picks:
-1. $XXX - Item Name
-   👉 https://facebook.com/marketplace/item/XXX
-
-2. $XXX - Item Name  
-   👉 https://facebook.com/marketplace/item/XXX
-
-3. $XXX - Item Name
-   👉 https://facebook.com/marketplace/item/XXX
+{exact report from fb-marketplace agent}
 ```
 
 ### Step 3: Send to Telegram

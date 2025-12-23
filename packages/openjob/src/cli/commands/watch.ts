@@ -18,7 +18,7 @@ export async function watchCommand(args: string[]) {
 
   if (values.help) {
     console.log(`
-Usage: mkt watch [job-id]
+Usage: ocr watch [job-id]
 
 Attach to a running job's tmux session.
 
@@ -38,22 +38,22 @@ Press Ctrl+B, D to detach from the session.
       jobId = running.job.id;
       console.log(`Attaching to running job: ${jobId} (${running.searchSlug})`);
     } else {
-      // Check for any marketplace tracker tmux sessions
+      // Check for any job tmux sessions
       const sessions = listTmuxSessions();
       if (sessions.length === 0) {
         console.log("No jobs currently running.");
-        console.log("Start one with: mkt run <slug>");
+        console.log("Start one with: ocr run <slug>");
         return;
       } else if (sessions.length === 1) {
-        // Extract job ID from session name (mkt-<jobId>)
-        jobId = sessions[0].replace("mkt-", "");
+        // Extract job ID from session name (job-<jobId>)
+        jobId = sessions[0].replace("job-", "");
         console.log(`Attaching to session: ${sessions[0]}`);
       } else {
         console.log("Multiple sessions found:");
         for (const s of sessions) {
           console.log(`  ${s}`);
         }
-        console.log("\nSpecify which one: mkt watch <job-id>");
+        console.log("\nSpecify which one: ocr watch <job-id>");
         return;
       }
     }
@@ -64,7 +64,7 @@ Press Ctrl+B, D to detach from the session.
   if (!tmuxSessionExists(sessionName)) {
     console.error(`No tmux session found for job ${jobId}`);
     console.log("The job may have already completed.");
-    console.log("Check job status: mkt jobs");
+    console.log("Check job status: ocr jobs");
     process.exit(1);
   }
 

@@ -10,7 +10,9 @@ venv/
 __pycache__/
 *.pyc
 outputs/
-opencode.json
+
+# Job runner data (contains config with API keys)
+**/data/
 
 # Logs
 *.log

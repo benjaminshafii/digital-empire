@@ -71,12 +71,23 @@ export function getAttachCommand(jobId: string): string {
 
 // === PROMPT PROCESSING ===
 
+interface PromptVariables {
+  reportPath: string;
+  searchSlug: string;
+  jobId: string;
+}
+
 /**
  * Process the prompt template, replacing variables:
  * - {{reportPath}} → absolute path to report.md for this job
+ * - {{searchSlug}} → slug of the search
+ * - {{jobId}} → ID of the job
  */
-function processPrompt(promptTemplate: string, reportPath: string): string {
-  return promptTemplate.replace(/\{\{reportPath\}\}/g, reportPath);
+function processPrompt(promptTemplate: string, vars: PromptVariables): string {
+  return promptTemplate
+    .replace(/\{\{reportPath\}\}/g, vars.reportPath)
+    .replace(/\{\{searchSlug\}\}/g, vars.searchSlug)
+    .replace(/\{\{jobId\}\}/g, vars.jobId);
 }
 
 // === JOB EXECUTION ===
@@ -115,8 +126,12 @@ export async function startJob(searchSlug: string, options: RunJobOptions = {}):
   const opencodeBin = findOpencodeBinary();
   const projectRoot = findProjectRoot();
 
-  // Process prompt template (replace {{reportPath}})
-  const prompt = processPrompt(promptTemplate, reportPath);
+  // Process prompt template (replace {{reportPath}}, {{searchSlug}}, {{jobId}})
+  const prompt = processPrompt(promptTemplate, {
+    reportPath,
+    searchSlug,
+    jobId: job.id,
+  });
 
   // Mark running
   setCurrentJob(job.id);
@@ -133,14 +148,17 @@ export async function startJob(searchSlug: string, options: RunJobOptions = {}):
   writeFileSync(promptFile, prompt);
 
   // Script: run opencode, then touch DONE
-  // Note: No --agent flag - agents are referenced in the prompt via @agent syntax
+  // Extract agent from prompt if it starts with @agent-name
+  const agentMatch = prompt.match(/^@([\w-]+)/);
+  const agentFlag = agentMatch ? `--agent ${agentMatch[1]}` : "";
+  
   const scriptPath = join(jobDir, "run.sh");
   writeFileSync(
     scriptPath,
     `#!/bin/bash
 cd "${projectRoot}"
 PROMPT=$(cat "${promptFile}")
-${opencodeBin} run "$PROMPT" 2>&1 | tee "${logPath}"
+${opencodeBin} run ${agentFlag} "$PROMPT" 2>&1 | tee "${logPath}"
 touch "${donePath}"
 `
   );

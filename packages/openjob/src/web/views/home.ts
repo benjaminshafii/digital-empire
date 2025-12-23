@@ -238,14 +238,9 @@ export function addSearchForm(): string {
               name="prompt" 
               required
               rows="8"
-              placeholder="@fb-marketplace Find deals on Facebook Marketplace.
+              placeholder="@summarize Research the latest developments in AI.
 
-SEARCH: Standing desk under $300
-LOCATION: San Francisco
-
-Write a markdown report with:
-- **Top Picks** (3-5 best deals with links)
-- **Other Options** (table: price, item, link)
+Write a markdown report with key findings.
 
 Save the report to: {{reportPath}}"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none font-mono text-sm"
@@ -268,13 +263,14 @@ Save the report to: {{reportPath}}"
       </div>
       
       <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-        <h3 class="font-medium text-gray-900 mb-2">Example: FB Marketplace Search</h3>
-        <pre class="text-xs text-gray-600 overflow-x-auto">@fb-marketplace Find deals on Facebook Marketplace.
+        <h3 class="font-medium text-gray-900 mb-2">Example: Research Task</h3>
+        <pre class="text-xs text-gray-600 overflow-x-auto">@summarize Research the topic and compile findings.
 
-SEARCH: Herman Miller Aeron chair
-LOCATION: San Francisco Bay Area
+Write a markdown report with:
+- Key findings
+- Sources and links
+- Recommendations
 
-Write a markdown report with top picks and links.
 Save the report to: {{reportPath}}</pre>
       </div>
     </div>

@@ -20,6 +20,7 @@ export interface Job {
   id: string;
   searchSlug: string;
   status: "queued" | "running" | "completed" | "failed" | "cancelled";
+  title?: string; // AI-generated title for the job
   createdAt: string;
   startedAt?: string;
   completedAt?: string;

@@ -1,7 +1,7 @@
 {
   "name": "@digital-empire/marketplace-tracker",
   "version": "0.1.0",
-  "description": "Facebook Marketplace deal finder - built on opencode-job-runner",
+  "description": "Facebook Marketplace deal finder - built on openjob",
   "type": "module",
   "bin": {
     "mkt": "./src/cli.ts"
@@ -13,7 +13,7 @@
     "typecheck": "bun x tsc --noEmit"
   },
   "dependencies": {
-    "opencode-job-runner": "workspace:*",
+    "openjob": "workspace:*",
     "hono": "^4.0.0"
   },
   "devDependencies": {
