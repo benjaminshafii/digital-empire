@@ -5,7 +5,7 @@ Run and schedule OpenCode agent jobs from the command line.
 ## Install CLI
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/benjaminshafii/digital-empire/main/packages/job-runner/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/benjaminshafii/digital-empire/main/packages/openjob/install.sh | bash
 ```
 
 Or build from source:
