@@ -5,7 +5,7 @@ Run and schedule OpenCode agent jobs from the command line.
 ## Install CLI
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sst/opencode/main/packages/job-runner/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/benjaminshafii/digital-empire/main/packages/job-runner/install.sh | bash
 ```
 
 Or build from source:
@@ -73,7 +73,7 @@ ocr cancel
 
 ## Prompt Files
 
-Each job has a `prompt.md` file that defines what the agent does:
+Each job has a `prompt.md` file that defines what the agent does. It can refer to other `opencode` agent. So you're able to automate sequential complex tasks.
 
 ```markdown
 @fb-marketplace
@@ -82,8 +82,9 @@ Find deals matching: Standing desk under $300
 
 Location: San Francisco Bay Area
 
-Write your findings to: {{reportPath}}
+Then send a message with @telegram
 ```
+
 
 - **`@agent-name`** - Specifies which OpenCode agent to use
 - **`{{reportPath}}`** - Replaced with actual output path at runtime
