@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail
 
 APP=openjob
 
@@ -79,8 +79,13 @@ REPO_URL="${OPENJOB_SOURCE:-https://github.com/benjaminshafii/digital-empire}"
 echo -e "${MUTED}Building from source...${NC}"
 
 # For development: use local source if available (when running install.sh directly from repo)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$SCRIPT_DIR/src/cli/index.ts" ]; then
+# Note: BASH_SOURCE is empty when piped to bash, so we default to cloning
+SCRIPT_DIR=""
+if [ -n "${BASH_SOURCE[0]:-}" ]; then
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || true
+fi
+
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/src/cli/index.ts" ]; then
   echo -e "${MUTED}Using local source${NC}"
   cd "$SCRIPT_DIR"
   bun install
