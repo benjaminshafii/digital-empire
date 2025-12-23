@@ -70,6 +70,7 @@ export {
   startJob,
   attachToJob,
   cancelJob,
+  cancelJobWatcher,
   getRunningJob,
 } from "./job-runner";
 

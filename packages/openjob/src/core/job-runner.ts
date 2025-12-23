@@ -32,6 +32,9 @@ import {
 
 const TMUX_PREFIX = "job";
 
+// Track active job watchers so we can cancel them when jobs are deleted
+const activeWatchers = new Map<string, NodeJS.Timeout>();
+
 // === TMUX HELPERS ===
 
 export function isTmuxAvailable(): boolean {
@@ -198,10 +201,14 @@ function watchJobCompletion(
 
     if (doneExists || sessionGone) {
       clearInterval(checkInterval);
+      activeWatchers.delete(jobId);
       // Wait a moment for file writes to complete
       setTimeout(() => finalizeJob(searchSlug, jobId, reportPath, options), 2000);
     }
   }, 2000);
+
+  // Store the interval so we can cancel it if job is deleted
+  activeWatchers.set(jobId, checkInterval);
 }
 
 function finalizeJob(
@@ -210,6 +217,22 @@ function finalizeJob(
   reportPath: string,
   options: RunJobOptions
 ): void {
+  // Clear the watcher for this job (in case it wasn't cleared already)
+  const watcher = activeWatchers.get(jobId);
+  if (watcher) {
+    clearInterval(watcher);
+    activeWatchers.delete(jobId);
+  }
+
+  // Check if job still exists (might have been deleted while running)
+  const existingJob = getJob(searchSlug, jobId);
+  if (!existingJob) {
+    // Job was deleted - just clean up and move on
+    setCurrentJob(undefined);
+    processQueue(options);
+    return;
+  }
+
   // Simple: check if report.md exists and has content
   const hasReport = existsSync(reportPath);
   let report = "";
@@ -263,9 +286,23 @@ export function attachToJob(jobId: string): void {
   if (result.error) throw result.error;
 }
 
+/**
+ * Cancel a job watcher interval (called when job is deleted or cancelled)
+ */
+export function cancelJobWatcher(jobId: string): void {
+  const watcher = activeWatchers.get(jobId);
+  if (watcher) {
+    clearInterval(watcher);
+    activeWatchers.delete(jobId);
+  }
+}
+
 export function cancelJob(searchSlug: string, jobId: string): void {
   const job = getJob(searchSlug, jobId);
   if (!job) throw new Error(`Job "${jobId}" not found`);
+
+  // Cancel the watcher first to prevent finalizeJob from running
+  cancelJobWatcher(jobId);
 
   if (job.status === "queued") {
     removeFromQueue(jobId);
