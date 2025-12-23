@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP=ocr
+APP=openjob
 
 MUTED='\033[0;2m'
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
-echo -e "${MUTED}Installing ${NC}ocr${MUTED} - OpenCode Job Runner CLI${NC}"
+echo -e "${MUTED}Installing ${NC}openjob${MUTED} - OpenCode Job Runner${NC}"
 echo ""
 
 # Detect OS and architecture
@@ -65,37 +65,37 @@ fi
 INSTALL_DIR=$HOME/.local/bin
 mkdir -p "$INSTALL_DIR"
 
-# For now, build from source (later: download from releases)
-# This requires bun to be installed
+# Requires bun to be installed
 if ! command -v bun >/dev/null 2>&1; then
   echo -e "${MUTED}Installing bun...${NC}"
   curl -fsSL https://bun.sh/install | bash
   export PATH="$HOME/.bun/bin:$PATH"
 fi
 
-# Clone or update repo (temporary - for local dev)
-REPO_DIR="${TMPDIR:-/tmp}/ocr-install-$$"
-OCR_SOURCE="${OCR_SOURCE:-https://github.com/sst/opencode}"
+# Clone and build from source
+REPO_DIR="${TMPDIR:-/tmp}/openjob-install-$$"
+REPO_URL="${OPENJOB_SOURCE:-https://github.com/benjaminshafii/digital-empire}"
 
 echo -e "${MUTED}Building from source...${NC}"
 
-# For development: use local source if available
+# For development: use local source if available (when running install.sh directly from repo)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -f "$SCRIPT_DIR/src/cli/index.ts" ]; then
   echo -e "${MUTED}Using local source${NC}"
   cd "$SCRIPT_DIR"
   bun install
-  bun build src/cli/index.ts --compile --outfile "$INSTALL_DIR/ocr"
+  bun build src/cli/index.ts --compile --outfile "$INSTALL_DIR/$APP"
 else
-  # Clone and build
-  git clone --depth 1 "$OCR_SOURCE" "$REPO_DIR" 2>/dev/null || true
-  cd "$REPO_DIR/packages/job-runner"
+  # Clone and build from GitHub
+  echo -e "${MUTED}Cloning $REPO_URL...${NC}"
+  git clone --depth 1 "$REPO_URL" "$REPO_DIR"
+  cd "$REPO_DIR/packages/openjob"
   bun install
-  bun build src/cli/index.ts --compile --outfile "$INSTALL_DIR/ocr"
+  bun build src/cli/index.ts --compile --outfile "$INSTALL_DIR/$APP"
   rm -rf "$REPO_DIR"
 fi
 
-chmod +x "$INSTALL_DIR/ocr"
+chmod +x "$INSTALL_DIR/$APP"
 
 # Add to PATH if needed
 add_to_path() {
@@ -107,7 +107,7 @@ add_to_path() {
   fi
 
   if [[ -w $config_file ]]; then
-    echo -e "\n# opencode-job-runner" >> "$config_file"
+    echo -e "\n# openjob" >> "$config_file"
     echo "$command" >> "$config_file"
     echo -e "${MUTED}Added to PATH in ${NC}$config_file"
   fi
@@ -129,13 +129,13 @@ if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
 fi
 
 echo ""
-echo -e "${GREEN}ocr installed successfully!${NC}"
+echo -e "${GREEN}openjob installed successfully!${NC}"
 echo ""
 echo -e "${MUTED}Quick start:${NC}"
 echo ""
-echo -e "  ocr add -p \"Standing desk under 300\""
-echo -e "  ocr run standing-desk --attach"
-echo -e "  ocr show standing-desk"
+echo -e "  openjob                    # Start interactive TUI"
+echo -e "  openjob serve              # Start web UI + scheduler"
+echo -e "  openjob --help             # Show all commands"
 echo ""
-echo -e "${MUTED}For more info: ocr --help${NC}"
+echo -e "${MUTED}For more info: https://github.com/benjaminshafii/digital-empire/tree/master/packages/openjob${NC}"
 echo ""
