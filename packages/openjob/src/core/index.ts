@@ -76,8 +76,21 @@ export {
 
 // Scheduler
 export {
+  // Primitives
+  parseSchedule,
+  parseIntervalSchedule,
+  isCronSchedule,
+  cronMatchesNow,
+  getNextCronTime,
+  describeSchedule,
+  shouldRun,
+  getNextRunTime,
+  getTimeUntilNextRun,
+  listScheduledJobs,
+  // Built-in scheduler
   startScheduler,
   stopScheduler,
   isSchedulerActive,
+  // Legacy
   getNextRunDescription,
 } from "./scheduler";

@@ -34,6 +34,7 @@ USAGE:
 
 COMMANDS:
   serve               Start web UI + scheduler (non-blocking in TUI)
+  tui                 Start new OpenTUI interface (experimental)
   list, ls            List all saved jobs
   run <slug>          Run a job
   jobs                List recent job runs
@@ -134,6 +135,10 @@ export async function main() {
     switch (command) {
       case "serve":
         await serveCommand(commandArgs);
+        break;
+      case "tui":
+        // Start new OpenTUI interface
+        await import("../tui/index.tsx");
         break;
       case "list":
       case "ls":

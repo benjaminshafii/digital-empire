@@ -156,12 +156,15 @@ export async function startJob(searchSlug: string, options: RunJobOptions = {}):
   const agentFlag = agentMatch ? `--agent ${agentMatch[1]}` : "";
   
   const scriptPath = join(jobDir, "run.sh");
+  const exitCodePath = join(jobDir, "EXIT_CODE");
   writeFileSync(
     scriptPath,
     `#!/bin/bash
 cd "${projectRoot}"
 PROMPT=$(cat "${promptFile}")
 ${opencodeBin} run ${agentFlag} "$PROMPT" 2>&1 | tee "${logPath}"
+EXIT_CODE=\${PIPESTATUS[0]}
+echo "\$EXIT_CODE" > "${exitCodePath}"
 touch "${donePath}"
 `
   );
@@ -233,7 +236,18 @@ function finalizeJob(
     return;
   }
 
-  // Simple: check if report.md exists and has content
+  const jobDir = getJobDir(searchSlug, jobId);
+  
+  // Primary signal: exit code from opencode
+  const exitCodePath = join(jobDir, "EXIT_CODE");
+  let exitCode: number | null = null;
+  if (existsSync(exitCodePath)) {
+    const code = readFileSync(exitCodePath, "utf-8").trim();
+    exitCode = parseInt(code, 10);
+    if (isNaN(exitCode)) exitCode = null;
+  }
+
+  // Secondary signal: check if report.md exists and has content
   const hasReport = existsSync(reportPath);
   let report = "";
   
@@ -241,12 +255,56 @@ function finalizeJob(
     report = readFileSync(reportPath, "utf-8").trim();
   }
 
-  const success = report.length > 100;
+  // Success determination (in order of reliability):
+  // 1. Exit code 0 = success, non-zero = failure
+  // 2. If no exit code captured (shouldn't happen), fall back to report existence
+  const success = exitCode !== null 
+    ? exitCode === 0 
+    : (hasReport && report.length > 0);
+  
+  // Get error info from log if failed
+  let errorMsg = exitCode !== null && exitCode !== 0 
+    ? `Exit code: ${exitCode}` 
+    : "No report generated";
+    
+  if (!success) {
+    const logPath = getJobLogPath(searchSlug, jobId);
+    if (existsSync(logPath)) {
+      const logContent = readFileSync(logPath, "utf-8");
+      const lines = logContent.split("\n").filter(l => l.trim());
+      
+      // Look for specific error patterns from opencode output
+      const errorPatterns = [
+        /error:/i,
+        /failed:/i,
+        /exception/i,
+        /^\s*!\s+/,  // opencode error prefix
+        /panic/i,
+      ];
+      
+      const errorLines = lines.filter(l => 
+        errorPatterns.some(pattern => pattern.test(l))
+      );
+      
+      if (errorLines.length > 0) {
+        errorMsg = errorLines.slice(-5).join("\n");
+      } else if (lines.length > 0) {
+        // Just get the last few lines as context
+        errorMsg = `Exit code: ${exitCode ?? 'unknown'}\nLast output:\n${lines.slice(-5).join("\n")}`;
+      }
+    }
+  }
+
+  // Calculate duration
+  const startTime = existingJob.startedAt ? new Date(existingJob.startedAt).getTime() : 0;
+  const endTime = Date.now();
+  const duration = startTime ? endTime - startTime : undefined;
 
   const completedJob = updateJob(searchSlug, jobId, {
     status: success ? "completed" : "failed",
     completedAt: new Date().toISOString(),
-    error: success ? undefined : "No report generated",
+    duration,
+    error: success ? undefined : errorMsg,
   });
 
   setCurrentJob(undefined);
