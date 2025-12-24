@@ -2,6 +2,11 @@
 
 Simplified FB Marketplace deal finder with Telegram notifications.
 
+<img width="1800" height="1155" alt="Screenshot 2025-12-23 at 22 14 23" src="https://github.com/user-attachments/assets/19972393-2255-4c7b-ab56-593a2f9c5f50" />
+
+<img width="1800" height="1155" alt="Screenshot 2025-12-23 at 22 13 11" src="https://github.com/user-attachments/assets/77863e61-2171-42c7-a9aa-51dfe099b97a" />
+
+
 ## How It Works
 
 1. **Enter a search term** (e.g., "standing desk under $300")
