@@ -14,7 +14,8 @@ I've been in crypto since 2018. Founded [0.finance](https://0.finance) (OSS bank
 | [**ha-watch**](./apps/ha-watch) | Voice-control Home Assistant from your Apple Watch. Uses iOS 26 SpeechAnalyzer for on-device transcription. "Turn on kitchen lights" from your wrist, no phone needed. |
 | [**corgina**](./apps/pregnancy) | Voice-first pregnancy health tracker. Say "I ate tahini for lunch" and it logs the meal with AI-estimated nutrition (GPT-4o). Bring your own API key. [TestFlight](https://testflight.apple.com/join/5HV3CJ7x) available. |
 | [**workout**](./apps/workout) | **Phoneless Hevy** - Log gym workouts entirely by voice on Apple Watch. No phone mid-workout. Syncs to Hevy. watchOS 26 Liquid Glass UI. |
-| [**marketplace-tracker**](./apps/marketplace-tracker) | CLI wrapper around an OpenCode agent specialized for finding Facebook Marketplace deals. Automates the search so you don't have to. |
+| [**marketplace-tracker**](./apps/marketplace-tracker) | Web UI for finding Facebook Marketplace deals. Built on openjob. |
+| [**openjob**](./packages/openjob) | Generic job runner for OpenCode. The prompt is the workflow - define jobs in natural language with `@agent` tags, schedule with cron, run in tmux. |
 
 ## Quick Start
 
@@ -72,12 +73,14 @@ See [.env.example](./.env.example) for required variables.
 ├── apps/
 │   ├── blog/                 # Astro publisher (works with obsidian-plugin)
 │   ├── ha-watch/             # Home Assistant watchOS voice control
-│   ├── marketplace-tracker/  # OpenCode agent CLI for FB Marketplace
+│   ├── marketplace-tracker/  # FB Marketplace deal finder (built on openjob)
 │   ├── obsidian-plugin/      # Obsidian → blog sync plugin
 │   ├── photo-to-splat/       # Single photo → 3D Gaussian Splat
 │   ├── portfolio/            # digital-garden - dual-mode personal website
 │   ├── pregnancy/            # Corgina - voice-first pregnancy tracker
 │   └── workout/              # Phoneless Hevy - watchOS workout logger
+├── packages/
+│   └── openjob/              # Generic OpenCode job runner & scheduler
 ├── .opencode/agent/          # AI agent configs
 ├── turbo.json                # Turborepo config
 ├── pnpm-workspace.yaml       # pnpm workspace config
