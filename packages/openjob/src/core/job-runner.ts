@@ -25,7 +25,6 @@ import {
   getSearchesDir,
   getJobDir,
   getJobLogPath,
-  getJobReportPath,
   findOpencodeBinary,
   findProjectRoot,
 } from "./paths";
@@ -72,27 +71,6 @@ export function getAttachCommand(jobId: string): string {
   return `tmux attach -t ${getTmuxSessionName(jobId)}`;
 }
 
-// === PROMPT PROCESSING ===
-
-interface PromptVariables {
-  reportPath: string;
-  searchSlug: string;
-  jobId: string;
-}
-
-/**
- * Process the prompt template, replacing variables:
- * - {{reportPath}} → absolute path to report.md for this job
- * - {{searchSlug}} → slug of the search
- * - {{jobId}} → ID of the job
- */
-function processPrompt(promptTemplate: string, vars: PromptVariables): string {
-  return promptTemplate
-    .replace(/\{\{reportPath\}\}/g, vars.reportPath)
-    .replace(/\{\{searchSlug\}\}/g, vars.searchSlug)
-    .replace(/\{\{jobId\}\}/g, vars.jobId);
-}
-
 // === JOB EXECUTION ===
 
 export async function startJob(searchSlug: string, options: RunJobOptions = {}): Promise<Job> {
@@ -124,17 +102,14 @@ export async function startJob(searchSlug: string, options: RunJobOptions = {}):
   const sessionName = getTmuxSessionName(job.id);
   const jobDir = getJobDir(searchSlug, job.id);
   const logPath = getJobLogPath(searchSlug, job.id);
-  const reportPath = getJobReportPath(searchSlug, job.id);
   const donePath = join(jobDir, "DONE");
   const opencodeBin = findOpencodeBinary();
   const projectRoot = findProjectRoot();
 
-  // Process prompt template (replace {{reportPath}}, {{searchSlug}}, {{jobId}})
-  const prompt = processPrompt(promptTemplate, {
-    reportPath,
-    searchSlug,
-    jobId: job.id,
-  });
+  // Transform prompt if a transformer is provided (apps use this to inject template variables)
+  const prompt = options.transformPrompt 
+    ? options.transformPrompt(promptTemplate, { searchSlug, jobId: job.id, jobDir })
+    : promptTemplate;
 
   // Mark running
   setCurrentJob(job.id);
@@ -185,7 +160,7 @@ touch "${donePath}"
   }
 
   // Watch for completion
-  watchJobCompletion(searchSlug, job.id, sessionName, reportPath, donePath, options);
+  watchJobCompletion(searchSlug, job.id, sessionName, donePath, options);
 
   return getJob(searchSlug, job.id)!;
 }
@@ -194,7 +169,6 @@ function watchJobCompletion(
   searchSlug: string,
   jobId: string,
   sessionName: string,
-  reportPath: string,
   donePath: string,
   options: RunJobOptions
 ): void {
@@ -206,7 +180,7 @@ function watchJobCompletion(
       clearInterval(checkInterval);
       activeWatchers.delete(jobId);
       // Wait a moment for file writes to complete
-      setTimeout(() => finalizeJob(searchSlug, jobId, reportPath, options), 2000);
+      setTimeout(() => finalizeJob(searchSlug, jobId, options), 2000);
     }
   }, 2000);
 
@@ -217,7 +191,6 @@ function watchJobCompletion(
 function finalizeJob(
   searchSlug: string,
   jobId: string,
-  reportPath: string,
   options: RunJobOptions
 ): void {
   // Clear the watcher for this job (in case it wasn't cleared already)
@@ -238,7 +211,7 @@ function finalizeJob(
 
   const jobDir = getJobDir(searchSlug, jobId);
   
-  // Primary signal: exit code from opencode
+  // Success is determined by exit code only - openjob doesn't know about reports
   const exitCodePath = join(jobDir, "EXIT_CODE");
   let exitCode: number | null = null;
   if (existsSync(exitCodePath)) {
@@ -247,25 +220,13 @@ function finalizeJob(
     if (isNaN(exitCode)) exitCode = null;
   }
 
-  // Secondary signal: check if report.md exists and has content
-  const hasReport = existsSync(reportPath);
-  let report = "";
-  
-  if (hasReport) {
-    report = readFileSync(reportPath, "utf-8").trim();
-  }
-
-  // Success determination (in order of reliability):
-  // 1. Exit code 0 = success, non-zero = failure
-  // 2. If no exit code captured (shouldn't happen), fall back to report existence
-  const success = exitCode !== null 
-    ? exitCode === 0 
-    : (hasReport && report.length > 0);
+  // Success = exit code 0, failure = non-zero or no exit code
+  const success = exitCode === 0;
   
   // Get error info from log if failed
   let errorMsg = exitCode !== null && exitCode !== 0 
     ? `Exit code: ${exitCode}` 
-    : "No report generated";
+    : "Job did not complete successfully";
     
   if (!success) {
     const logPath = getJobLogPath(searchSlug, jobId);
@@ -311,7 +272,6 @@ function finalizeJob(
 
   options.onComplete?.({
     job: completedJob,
-    report: success ? report : undefined,
     logFile: getJobLogPath(searchSlug, jobId),
   });
 

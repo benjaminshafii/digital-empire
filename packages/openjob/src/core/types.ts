@@ -24,6 +24,7 @@ export interface Job {
   createdAt: string;
   startedAt?: string;
   completedAt?: string;
+  duration?: number; // Duration in milliseconds
   error?: string;
   tmuxSession?: string; // tmux session name when running
 }
@@ -38,7 +39,6 @@ export interface QueueState {
 // Result of running a job (for programmatic use)
 export interface JobResult {
   job: Job;
-  report?: string; // markdown report content
   logFile?: string; // path to log file
 }
 
@@ -49,9 +49,22 @@ export interface CreateSearchOptions {
   schedule?: string;
 }
 
+// Context passed to prompt transformer
+export interface PromptContext {
+  searchSlug: string;
+  jobId: string;
+  jobDir: string;
+}
+
 // Options for running a job
 export interface RunJobOptions {
   attach?: boolean; // attach to tmux session immediately
   onStart?: (job: Job) => void;
   onComplete?: (result: JobResult) => void;
+  /**
+   * Transform the prompt before execution.
+   * Apps can use this to inject template variables like {{reportPath}}.
+   * The prompt is transformed after the job is created but before execution.
+   */
+  transformPrompt?: (prompt: string, context: PromptContext) => string;
 }

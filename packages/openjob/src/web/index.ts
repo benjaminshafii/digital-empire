@@ -6,7 +6,6 @@ import { layout } from "./views/layout";
 import { homePage, runningJobView } from "./views/home";
 import { listPage } from "./views/list";
 import { jobPage } from "./views/job";
-import { reportPage } from "./views/report";
 import {
   listSearches,
   getSearch,
@@ -19,7 +18,6 @@ import {
   updatePrompt,
   listJobsForSearch,
   getJob,
-  getJobReport,
   listAllJobs,
   updateJob,
   setCurrentJob,
@@ -32,7 +30,7 @@ import {
   tmuxSessionExists,
   getTmuxSessionName,
   getAttachCommand,
-  getJobReportPath,
+  getJobDir,
   ensureDataDirs,
   startScheduler,
   stopScheduler,
@@ -42,6 +40,7 @@ import {
   getTimeUntilNextRun,
 } from "../core";
 import { existsSync, readFileSync } from "fs";
+import { join } from "path";
 
 const app = new Hono();
 
@@ -127,6 +126,7 @@ app.get("/job/:slug", (c) => {
 // Report view (legacy route support)
 app.get("/search/:slug", (c) => c.redirect(`/job/${c.req.param("slug")}`));
 
+// Job detail route - shows job status and logs (no reports in openjob core)
 app.get("/search/:slug/:jobId", (c) => {
   const slug = c.req.param("slug");
   const jobId = c.req.param("jobId");
@@ -136,20 +136,22 @@ app.get("/search/:slug/:jobId", (c) => {
   const job = getJob(slug, jobId);
   if (!job) return c.redirect(`/job/${slug}`);
 
-  const report = getJobReport(slug, jobId);
-  if (!report) {
-    return c.html(layout("No Report", `
-      <div class="min-h-screen flex items-center justify-center">
-        <div class="text-center">
-          <h1 class="text-xl text-white mb-2">No report available</h1>
-          <p class="text-muted mb-4">${job.error || "Job may have failed"}</p>
-          <a href="/job/${slug}" class="text-primary hover:underline">← Back to job</a>
-        </div>
+  // Show job details page (logs, status, etc.)
+  return c.html(layout(`${search.name} - Job ${jobId.slice(0, 8)}`, `
+    <div class="min-h-screen p-8">
+      <div class="max-w-4xl mx-auto">
+        <a href="/job/${slug}" class="text-primary hover:underline mb-4 inline-block">← Back to ${escapeHtml(search.name)}</a>
+        <h1 class="text-xl text-white mb-2">Job ${jobId.slice(0, 8)}</h1>
+        <p class="text-muted mb-4">Status: <span class="${job.status === 'completed' ? 'text-green-400' : job.status === 'failed' ? 'text-red-400' : 'text-blue-400'}">${job.status}</span></p>
+        ${job.error ? `<p class="text-red-400 mb-4">Error: ${escapeHtml(job.error)}</p>` : ''}
+        <p class="text-muted text-sm">
+          Created: ${job.createdAt}<br/>
+          ${job.startedAt ? `Started: ${job.startedAt}<br/>` : ''}
+          ${job.completedAt ? `Completed: ${job.completedAt}` : ''}
+        </p>
       </div>
-    `));
-  }
-
-  return c.html(layout(`${search.name} Report`, reportPage({ search, job, report })));
+    </div>
+  `));
 });
 
 // === API ===
@@ -300,13 +302,13 @@ app.get("/api/job/:slug/:jobId/status", (c) => {
   }
 
   if (job.status === "completed") {
-    // Job finished - redirect to report
+    // Job finished
     return c.html(`
       <div class="terminal rounded-lg p-4 border-green-500/50">
         <div class="flex items-center gap-3">
           <span class="w-2 h-2 bg-green-500 rounded-full"></span>
           <span class="text-green-400">Job completed!</span>
-          <a href="/search/${slug}/${jobId}" class="text-primary hover:underline ml-auto">View Report →</a>
+          <a href="/job/${slug}" class="text-primary hover:underline ml-auto">View Job →</a>
         </div>
       </div>
     `);
@@ -372,7 +374,7 @@ app.get("/api/search/:slug/status", (c) => {
   return c.html(`<div id="status-area"></div>`);
 });
 
-// Sync stale jobs
+// Sync stale jobs - uses exit codes, not reports (reports are app-specific)
 app.post("/api/sync", async (c) => {
   let fixed = 0;
   const jobs = listAllJobs(50);
@@ -380,20 +382,23 @@ app.post("/api/sync", async (c) => {
 
   for (const job of jobs) {
     if (job.status === "running" && !tmuxSessionExists(getTmuxSessionName(job.id))) {
-      const reportPath = getJobReportPath(job.searchSlug, job.id);
-      const hasReport = existsSync(reportPath) && readFileSync(reportPath, "utf-8").trim().length > 100;
+      // Check exit code to determine success
+      const jobDir = getJobDir(job.searchSlug, job.id);
+      const exitCodePath = join(jobDir, "EXIT_CODE");
+      
+      let exitCode: number | null = null;
+      if (existsSync(exitCodePath)) {
+        const code = readFileSync(exitCodePath, "utf-8").trim();
+        exitCode = parseInt(code, 10);
+        if (isNaN(exitCode)) exitCode = null;
+      }
+
       updateJob(job.searchSlug, job.id, {
-        status: hasReport ? "completed" : "failed",
+        status: exitCode === 0 ? "completed" : "failed",
         completedAt: new Date().toISOString(),
-        error: hasReport ? undefined : "No report.md",
+        error: exitCode === 0 ? undefined : exitCode !== null ? `Exit code: ${exitCode}` : "Session terminated",
       });
       fixed++;
-    } else if (job.status === "failed") {
-      const reportPath = getJobReportPath(job.searchSlug, job.id);
-      if (existsSync(reportPath) && readFileSync(reportPath, "utf-8").trim().length > 100) {
-        updateJob(job.searchSlug, job.id, { status: "completed", error: undefined });
-        fixed++;
-      }
     }
   }
 
@@ -420,12 +425,7 @@ app.post("/api/jobs/clear", async (c) => {
   return c.html(`<div>Deleted ${deleted}</div>`);
 });
 
-// Raw report
-app.get("/api/search/:slug/:jobId/raw", (c) => {
-  const report = getJobReport(c.req.param("slug"), c.req.param("jobId"));
-  if (!report) return c.text("Not found", 404);
-  return c.text(report, 200, { "Content-Type": "text/markdown" });
-});
+// Note: Raw report endpoint removed - reports are app-specific, not part of openjob core
 
 // === SERVER ===
 

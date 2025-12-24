@@ -10,6 +10,7 @@ export type {
   JobResult,
   CreateSearchOptions,
   RunJobOptions,
+  PromptContext,
 } from "./types";
 
 // Paths - configuration
@@ -21,7 +22,6 @@ export {
   getSearchPromptPath,
   getJobDir,
   getJobLogPath,
-  getJobReportPath,
   findOpencodeBinary,
   findProjectRoot,
   ensureDir,
@@ -49,8 +49,6 @@ export {
   listJobsForSearch,
   listAllJobs,
   getJobLog,
-  getJobReport,
-  saveJobReport,
   deleteJob,
   getLatestJob,
   getQueueState,

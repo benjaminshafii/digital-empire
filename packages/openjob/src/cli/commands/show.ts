@@ -2,18 +2,20 @@ import { parseArgs } from "util";
 import {
   getSearch,
   getLatestJob,
-  getJobReport,
   getJobLog,
+  getJob,
   listSearches,
+  getJobDir,
 } from "../../core/index";
+import { readdirSync } from "fs";
 
 export async function showCommand(args: string[]) {
   const { values, positionals } = parseArgs({
     args,
     options: {
-      log: { type: "boolean", short: "l" },
       job: { type: "string", short: "j" },
       json: { type: "boolean" },
+      files: { type: "boolean", short: "f" },
       help: { type: "boolean", short: "h" },
     },
     allowPositionals: true,
@@ -21,13 +23,13 @@ export async function showCommand(args: string[]) {
 
   if (values.help || positionals.length === 0) {
     console.log(`
-Usage: mkt show <slug> [options]
+Usage: openjob show <slug> [options]
 
-View the latest report for a search.
+View job details and logs.
 
 Options:
-  -l, --log         Show raw log instead of report
   -j, --job <id>    Show specific job instead of latest
+  -f, --files       List files in job directory
   --json            Output as JSON
   -h, --help        Show help
 `);
@@ -52,61 +54,61 @@ Options:
     const latest = getLatestJob(slug);
     if (!latest) {
       console.log(`No completed jobs for "${slug}" yet.`);
-      console.log(`Run it: mkt run ${slug}`);
+      console.log(`Run it: openjob run ${slug}`);
       return;
     }
     jobId = latest.id;
   }
 
-  if (values.log) {
-    // Show raw log
-    const log = getJobLog(slug, jobId);
-    if (!log) {
-      console.log("No log found for this job.");
-      return;
-    }
+  const job = getJob(slug, jobId);
+  if (!job) {
+    console.error(`Job "${jobId}" not found`);
+    return;
+  }
 
-    if (values.json) {
-      console.log(JSON.stringify({ log }, null, 2));
-    } else {
-      console.log(log);
+  // List files in job directory
+  if (values.files) {
+    const jobDir = getJobDir(slug, jobId);
+    try {
+      const files = readdirSync(jobDir);
+      console.log(`Files in job ${jobId}:`);
+      for (const file of files) {
+        console.log(`  ${file}`);
+      }
+    } catch {
+      console.log("Job directory not found");
     }
     return;
   }
 
-  // Show report
-  const report = getJobReport(slug, jobId);
-
-  if (!report) {
-    console.log("No report found for this job.");
-    console.log("The job may still be running or may have failed.");
-    console.log("Check status: mkt jobs");
-    console.log(`View log: mkt show ${slug} --log`);
-    return;
-  }
+  // Show job info and log
+  const log = getJobLog(slug, jobId);
 
   if (values.json) {
-    console.log(
-      JSON.stringify(
-        {
-          search: slug,
-          jobId,
-          report,
-        },
-        null,
-        2
-      )
-    );
+    console.log(JSON.stringify({ 
+      job,
+      log: log || null,
+    }, null, 2));
     return;
   }
 
-  // Print the report with a header
+  // Print job info
   console.log("");
   console.log("=".repeat(60));
-  console.log(`${search.name} - Report`);
-  console.log(`Job: ${jobId}`);
+  console.log(`${search.name} - Job ${jobId.slice(0, 8)}`);
   console.log("=".repeat(60));
+  console.log(`Status: ${job.status}`);
+  console.log(`Created: ${job.createdAt}`);
+  if (job.startedAt) console.log(`Started: ${job.startedAt}`);
+  if (job.completedAt) console.log(`Completed: ${job.completedAt}`);
+  if (job.error) console.log(`Error: ${job.error}`);
   console.log("");
-  console.log(report);
+  
+  if (log) {
+    console.log("--- Log ---");
+    console.log(log);
+  } else {
+    console.log("No log found for this job.");
+  }
   console.log("");
 }

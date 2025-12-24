@@ -17,7 +17,6 @@ import {
   getJobDir,
   getJobMetaPath,
   getJobLogPath,
-  getJobReportPath,
   ensureDir,
   ensureConfigDirs,
 } from "./paths";
@@ -138,23 +137,6 @@ export function getJobLog(searchSlug: string, jobId: string, tailLines?: number)
   }
 
   return content;
-}
-
-// Get job report content
-export function getJobReport(searchSlug: string, jobId: string): string | null {
-  const reportPath = getJobReportPath(searchSlug, jobId);
-
-  if (!existsSync(reportPath)) {
-    return null;
-  }
-
-  return readFileSync(reportPath, "utf-8");
-}
-
-// Save job report
-export function saveJobReport(searchSlug: string, jobId: string, report: string): void {
-  const reportPath = getJobReportPath(searchSlug, jobId);
-  writeFileSync(reportPath, report);
 }
 
 // Delete a job

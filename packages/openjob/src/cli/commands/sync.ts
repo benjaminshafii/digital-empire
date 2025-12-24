@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "fs";
+import { join } from "path";
 import {
   listAllJobs,
   updateJob,
@@ -6,7 +7,7 @@ import {
   getQueueState,
   tmuxSessionExists,
   getTmuxSessionName,
-  getJobReportPath,
+  getJobDir,
 } from "../../core/index";
 
 export async function syncCommand(args: string[]) {
@@ -22,17 +23,18 @@ export async function syncCommand(args: string[]) {
       const sessionExists = tmuxSessionExists(sessionName);
 
       if (!sessionExists) {
-        // Session gone - check if report.md was created
-        const reportPath = getJobReportPath(job.searchSlug, job.id);
-        const hasReport = existsSync(reportPath);
+        // Session gone - check exit code to determine success
+        const jobDir = getJobDir(job.searchSlug, job.id);
+        const exitCodePath = join(jobDir, "EXIT_CODE");
         
-        let reportValid = false;
-        if (hasReport) {
-          const content = readFileSync(reportPath, "utf-8").trim();
-          reportValid = content.length > 100;
+        let exitCode: number | null = null;
+        if (existsSync(exitCodePath)) {
+          const code = readFileSync(exitCodePath, "utf-8").trim();
+          exitCode = parseInt(code, 10);
+          if (isNaN(exitCode)) exitCode = null;
         }
 
-        if (reportValid) {
+        if (exitCode === 0) {
           updateJob(job.searchSlug, job.id, {
             status: "completed",
             completedAt: new Date().toISOString(),
@@ -42,25 +44,11 @@ export async function syncCommand(args: string[]) {
           updateJob(job.searchSlug, job.id, {
             status: "failed",
             completedAt: new Date().toISOString(),
-            error: "No report.md generated",
+            error: exitCode !== null ? `Exit code: ${exitCode}` : "Session terminated without exit code",
           });
           console.log(`  Fixed: ${job.id} -> failed (${job.searchSlug})`);
         }
         fixed++;
-      }
-    } else if (job.status === "failed") {
-      // Re-check failed jobs - report.md might exist now
-      const reportPath = getJobReportPath(job.searchSlug, job.id);
-      if (existsSync(reportPath)) {
-        const content = readFileSync(reportPath, "utf-8").trim();
-        if (content.length > 100) {
-          updateJob(job.searchSlug, job.id, {
-            status: "completed",
-            error: undefined,
-          });
-          console.log(`  Recovered: ${job.id} -> completed (${job.searchSlug})`);
-          fixed++;
-        }
       }
     }
   }

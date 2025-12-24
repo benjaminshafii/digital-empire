@@ -19,9 +19,10 @@ import {
   slugify,
   searchExists,
   getPrompt,
+  updatePrompt,
   listJobsForSearch,
   getJob,
-  getJobReport,
+  getJobDir,
   updateJob,
   startJob,
   getRunningJob,
@@ -30,6 +31,7 @@ import {
   ensureDataDirs,
   getAttachCommand,
   startScheduler,
+  type PromptContext,
 } from "openjob";
 
 // Set data directory to ./data relative to this app
@@ -67,6 +69,40 @@ function saveConfig(config: AppConfig): void {
   writeFileSync(configPath, JSON.stringify(config, null, 2));
 }
 
+// === REPORT HANDLING ===
+// Reports are an app-specific concept - openjob doesn't know about them
+
+/**
+ * Get the path where a job's report should be stored
+ */
+function getReportPath(searchSlug: string, jobId: string): string {
+  return join(getJobDir(searchSlug, jobId), "report.md");
+}
+
+/**
+ * Get a job's report content
+ */
+function getJobReport(searchSlug: string, jobId: string): string | null {
+  const reportPath = getReportPath(searchSlug, jobId);
+  if (!existsSync(reportPath)) {
+    return null;
+  }
+  return readFileSync(reportPath, "utf-8");
+}
+
+/**
+ * Prompt transformer for startJob - injects report path and other variables
+ */
+function createPromptTransformer(): (prompt: string, context: PromptContext) => string {
+  return (prompt: string, context: PromptContext) => {
+    const reportPath = getReportPath(context.searchSlug, context.jobId);
+    return prompt
+      .replace(/\{\{reportPath\}\}/g, reportPath)
+      .replace(/\{\{searchSlug\}\}/g, context.searchSlug)
+      .replace(/\{\{jobId\}\}/g, context.jobId);
+  };
+}
+
 // === TELEGRAM ===
 
 async function sendTelegramMessage(config: AppConfig, message: string): Promise<boolean> {
@@ -92,7 +128,7 @@ async function sendTelegramMessage(config: AppConfig, message: string): Promise<
 // Job completion handler - only notifies on failures now
 // Success notifications are handled by the @telegram agent in the prompt
 function getJobCompletionHandler(searchName: string) {
-  return async (result: { job: { status: string }; report?: string }) => {
+  return async (result: { job: { status: string; id: string; searchSlug?: string } }) => {
     const config = getConfig();
     if (!config.telegramBotToken || !config.telegramChatId) return;
     
@@ -653,6 +689,7 @@ app.post("/api/search", async (c) => {
   try {
     await startJob(search.slug, {
       onComplete: getJobCompletionHandler(searchTerm),
+      transformPrompt: createPromptTransformer(),
     });
     c.header("HX-Redirect", `/search/${search.slug}`);
     return c.html(`<div class="text-green-600">Search started!</div>`);
@@ -731,6 +768,7 @@ app.post("/api/run/:slug", async (c) => {
   try {
     await startJob(slug, {
       onComplete: getJobCompletionHandler(search?.name || slug),
+      transformPrompt: createPromptTransformer(),
     });
     c.header("HX-Refresh", "true");
     return c.html(`<div>Started</div>`);

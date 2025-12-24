@@ -93,10 +93,6 @@ export function getJobLogPath(searchSlug: string, jobId: string): string {
   return join(getJobDir(searchSlug, jobId), "output.log");
 }
 
-export function getJobReportPath(searchSlug: string, jobId: string): string {
-  return join(getJobDir(searchSlug, jobId), "report.md");
-}
-
 // Ensure directories exist
 export function ensureDir(dir: string): void {
   if (!existsSync(dir)) {
