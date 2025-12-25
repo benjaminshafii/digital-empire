@@ -1,175 +1,95 @@
 # openjob
 
-A scheduler and runner for [OpenCode](https://opencode.ai) prompts.
+An [OpenCode](https://opencode.ai) plugin for scheduling recurring prompts.
+
+Uses **launchd** (Mac) or **systemd** (Linux) for reliable scheduling that:
+- Survives reboots
+- Catches up on missed runs (if computer was asleep)
 
 ## Philosophy
 
-**The prompt is the workflow.** You define what to do, when to run it, and what agents to use - all in a single markdown file. openjob just handles the scheduling, execution, and job history.
+**The prompt is the workflow.** You define what to do, when to run it, and what agents to use - all in natural language. openjob just handles the scheduling.
 
-```markdown
----
-schedule: "0 9 * * *"
----
-
-@fb-marketplace Find standing desks under $300 in SF
-@telegram Send me the top 3 deals
+```
+"Schedule a daily job at 9am to search for standing desks on FB marketplace"
 ```
 
-That's a complete job definition. OpenCode handles all the orchestration - running agents in sequence or parallel, passing data between them, retrying on failure. openjob adds:
-
-- **Scheduling** - Run prompts on a cron schedule
-- **Persistence** - Save prompts, track job history
-- **UI** - TUI and web interface for managing jobs
-- **Tmux integration** - Attach to running jobs, detach and reattach
-
-**No workflow code.** No DAGs. No YAML pipelines. The prompt *is* the source of truth.
-
-## How It Works
-
-1. You write a prompt with `@agent` tags
-2. openjob saves it and runs it (now or on schedule)
-3. OpenCode executes the prompt, invoking agents as needed
-4. openjob records success/failure and keeps logs
-
-What agents do with their output is up to them - write files, send notifications, update databases. openjob doesn't care. It just runs prompts and tracks jobs.
-
-## Requirements
-
-- [OpenCode](https://opencode.ai) CLI (`opencode`)
-- [tmux](https://github.com/tmux/tmux) for job sessions
-- [Bun](https://bun.sh) runtime
+That's it. No YAML. No DAGs. No config files.
 
 ## Installation
-
-### Quick Install
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/benjaminshafii/digital-empire/master/packages/openjob/install.sh | bash
 ```
 
-### From Source
-
-```bash
-cd packages/openjob
-bun install
-bun run build
-cp dist/openjob ~/.local/bin/
-```
+Then restart OpenCode to load the plugin.
 
 ## Usage
 
-### Interactive TUI
-
-```bash
-openjob
-```
-
-Type a prompt with `@agent` tags. Press Enter to run, Ctrl+S to schedule.
-
-**Keyboard Shortcuts:**
-
-| Key | Action |
-|-----|--------|
-| `Enter` | Run job and attach to tmux |
-| `Ctrl+B` | Run job in background |
-| `Ctrl+S` | Schedule job |
-| `Tab` | Autocomplete @agent |
-| `Ctrl+A` | Cursor to start |
-| `Ctrl+E` | Cursor to end |
-| `Ctrl+W` | Delete word |
-| `Ctrl+C` | Exit |
-
-### Commands
-
-```bash
-openjob                 # Interactive TUI
-openjob serve           # Web UI + scheduler
-openjob list            # List saved jobs
-openjob run <slug>      # Run a job
-openjob watch [job-id]  # Attach to running job
-openjob cancel [job-id] # Cancel a job
-openjob delete <slug>   # Delete a job
-```
-
-## Agents
-
-Agents are markdown files in `.opencode/agent/` (project) or `~/.config/opencode/agent/` (global):
-
-```markdown
----
-description: Finds deals on Facebook Marketplace
-model: anthropic/claude-sonnet-4-20250514
-tools:
-  chrome_navigate_page: true
-  chrome_take_screenshot: true
----
-
-You are a Facebook Marketplace deal finder...
-```
-
-Reference them in prompts with `@agent-name`. The TUI autocompletes from available agents.
-
-## Scheduling
-
-Jobs can include a schedule in frontmatter:
-
-```markdown
----
-schedule: "0 9 * * *"
----
-
-@my-agent Do the thing
-```
-
-Or set via TUI (Ctrl+S) or SDK:
-
-```typescript
-createSearch({ name: "Daily job", prompt: "...", schedule: "0 9 * * *" })
-```
-
-**Common schedules:**
-
-| Cron | Description |
-|------|-------------|
-| `0 */2 * * *` | Every 2 hours |
-| `0 9 * * *` | Daily at 9 AM |
-| `0 9 * * 1` | Weekly on Monday |
-
-## SDK
-
-```typescript
-import { setDataDir, createSearch, startJob, startScheduler } from "openjob";
-
-setDataDir("./data");
-
-const search = createSearch({
-  name: "My job",
-  prompt: "@agent Do something",
-  schedule: "0 9 * * *",
-});
-
-await startJob(search.slug);
-
-startScheduler(); // For cron jobs
-```
-
-See [`apps/marketplace-tracker`](../../apps/marketplace-tracker) for a full example.
-
-## Data Directory
+Talk to OpenCode:
 
 ```
-data/
-├── queue.json              # Job queue state
-└── searches/
-    └── my-job/
-        ├── config.json     # Metadata + schedule
-        ├── prompt.md       # The prompt
-        └── jobs/
-            └── <job-id>/
-                ├── meta.json   # Status, timestamps
-                ├── output.log  # Tmux output
-                └── DONE        # Completion marker
+# Schedule a job
+"Schedule a daily job at 9am to search for standing desks under $300"
+
+# List jobs
+"Show my jobs"
+
+# Run a job now
+"Run the standing desk job"
+
+# View logs
+"Show logs for standing desk job"
+
+# Delete a job
+"Delete the standing desk job"
 ```
+
+## How It Works
+
+```
+You: "Schedule a daily job at 9am to search for standing desks"
+    |
+    v
+OpenCode calls schedule_job tool
+    |
+    v
+Plugin saves job + creates launchd/systemd timer
+    |
+    v
+At 9am (or when computer wakes), system runs: opencode run "<prompt>"
+```
+
+## Storage
+
+```
+~/.config/opencode/
+├── plugin/
+│   └── scheduler.ts      # The plugin
+├── jobs/
+│   └── standing-desk.json
+└── logs/
+    └── standing-desk.log
+```
+
+## For Apps (like marketplace-tracker)
+
+Apps can create jobs with a `source` prefix to filter their own jobs:
+
+```
+# Marketplace creates jobs with source="marketplace"
+# Job slug becomes: marketplace-standing-desk
+
+# List only marketplace jobs
+"Show my marketplace jobs"
+```
+
+The app's web UI calls OpenCode, which uses the plugin. Jobs are stored in the shared folder with a prefix for filtering.
+
+## Requirements
+
+- [OpenCode](https://opencode.ai)
+- macOS or Linux
 
 ## License
 

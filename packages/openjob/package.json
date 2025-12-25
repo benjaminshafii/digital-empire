@@ -1,39 +1,12 @@
 {
   "name": "openjob",
-  "version": "0.1.0",
-  "description": "Interactive CLI for running and scheduling OpenCode agent jobs",
+  "version": "1.0.0",
+  "description": "OpenCode plugin for scheduling recurring prompts via launchd/systemd",
   "type": "module",
-  "bin": {
-    "openjob": "./src/cli/index.ts"
-  },
-  "exports": {
-    ".": {
-      "import": "./src/core/index.ts",
-      "types": "./src/core/index.ts"
-    },
-    "./web": {
-      "import": "./src/web/index.ts",
-      "types": "./src/web/index.ts"
-    }
-  },
   "scripts": {
-    "build": "bun build src/cli/index.ts --compile --outfile dist/openjob",
-    "dev": "bun run src/cli/index.ts",
-    "tui": "bun run src/tui/index.tsx",
-    "serve": "bun run src/web/serve.ts",
-    "server": "bun run src/web/serve.ts"
-  },
-  "dependencies": {
-    "hono": "^4.0.0",
-    "ink": "^6.6.0",
-    "ink-text-input": "^6.0.0",
-    "marked": "^12.0.0",
-    "react": "^19.2.0"
+    "install": "bash install.sh"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "@types/react": "^19.0.0",
-    "react-devtools-core": "^7.0.1",
     "typescript": "^5.0.0"
   }
 }
