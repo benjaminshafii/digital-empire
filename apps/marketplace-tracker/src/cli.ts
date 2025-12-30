@@ -1,18 +1,19 @@
 #!/usr/bin/env bun
 /**
- * mkt - Marketplace Tracker CLI
+ * Marketplace Tracker CLI
  *
- * Facebook Marketplace deal finder built on openjob
- * 
- * This is a thin wrapper that sets the data directory and starts the openjob TUI.
+ * Simple entry point that starts the web server.
+ * All functionality is in the web UI.
  */
-import { join, dirname } from "path";
-import { setDataDir } from "openjob";
 
-// Set data directory to ./data relative to this app
-const appDir = dirname(dirname(new URL(import.meta.url).pathname));
-setDataDir(join(appDir, "data"));
+console.log(`
+Marketplace Tracker
 
-// Start the server instead of CLI
-console.log("Use 'pnpm --filter @digital-empire/marketplace-tracker serve' to start the server");
-console.log("Or run 'openjob' in the marketplace-tracker directory for the interactive CLI");
+Usage:
+  bun run src/server.ts    Start the web server
+  
+The web UI runs at http://localhost:3456
+
+To schedule jobs, use OpenCode with the openjob plugin:
+  opencode run "Schedule a job called marketplace-desk at 0 9 * * * to run: @fb-marketplace find standing desks under $300"
+`);

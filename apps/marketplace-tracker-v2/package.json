@@ -9,6 +9,7 @@
     "typecheck": "bun x tsc --noEmit"
   },
   "dependencies": {
+    "@opencode-ai/plugin": "1.0.200",
     "hono": "^4.0.0"
   },
   "devDependencies": {

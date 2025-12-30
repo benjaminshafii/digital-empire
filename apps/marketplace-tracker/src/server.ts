@@ -3,105 +3,39 @@
  * Marketplace Tracker Web Server
  * 
  * Simplified UI: user enters search term, app builds the full prompt
- * with @summarize agent + telegram notification
+ * with @fb-marketplace agent + telegram notification
+ * 
+ * Self-contained - no dependency on openjob package.
+ * Uses local storage and spawns opencode CLI directly.
  */
-import { join, dirname } from "path";
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { Hono } from "hono";
 import {
-  setDataDir,
-  getDataDir,
+  ensureDataDirs,
+  getConfig,
+  saveConfig,
   listSearches,
   getSearch,
   createSearch,
   updateSearch,
   deleteSearch,
-  slugify,
-  searchExists,
   getPrompt,
-  updatePrompt,
   listJobsForSearch,
   getJob,
-  getJobDir,
   updateJob,
-  startJob,
+  getJobReport,
   getRunningJob,
+  type AppConfig,
+} from "./storage";
+import {
+  startJob,
+  rerunSearch,
   cancelJob,
-  getQueueState,
-  ensureDataDirs,
   getAttachCommand,
-  startScheduler,
-  type PromptContext,
-} from "openjob";
-
-// Set data directory to ./data relative to this app
-const appDir = dirname(dirname(new URL(import.meta.url).pathname));
-setDataDir(join(appDir, "data"));
+  scheduleSearch,
+  unscheduleSearch,
+} from "./opencode";
 
 const app = new Hono();
-
-// === CONFIG MANAGEMENT ===
-
-interface AppConfig {
-  telegramBotToken: string;
-  telegramChatId: string;
-  location: string;
-}
-
-function getConfigPath(): string {
-  return join(getDataDir(), "config.json");
-}
-
-function getConfig(): AppConfig {
-  const configPath = getConfigPath();
-  if (existsSync(configPath)) {
-    try {
-      return JSON.parse(readFileSync(configPath, "utf-8"));
-    } catch {
-      // Return defaults on error
-    }
-  }
-  return { telegramBotToken: "", telegramChatId: "", location: "sanfrancisco" };
-}
-
-function saveConfig(config: AppConfig): void {
-  const configPath = getConfigPath();
-  writeFileSync(configPath, JSON.stringify(config, null, 2));
-}
-
-// === REPORT HANDLING ===
-// Reports are an app-specific concept - openjob doesn't know about them
-
-/**
- * Get the path where a job's report should be stored
- */
-function getReportPath(searchSlug: string, jobId: string): string {
-  return join(getJobDir(searchSlug, jobId), "report.md");
-}
-
-/**
- * Get a job's report content
- */
-function getJobReport(searchSlug: string, jobId: string): string | null {
-  const reportPath = getReportPath(searchSlug, jobId);
-  if (!existsSync(reportPath)) {
-    return null;
-  }
-  return readFileSync(reportPath, "utf-8");
-}
-
-/**
- * Prompt transformer for startJob - injects report path and other variables
- */
-function createPromptTransformer(): (prompt: string, context: PromptContext) => string {
-  return (prompt: string, context: PromptContext) => {
-    const reportPath = getReportPath(context.searchSlug, context.jobId);
-    return prompt
-      .replace(/\{\{reportPath\}\}/g, reportPath)
-      .replace(/\{\{searchSlug\}\}/g, context.searchSlug)
-      .replace(/\{\{jobId\}\}/g, context.jobId);
-  };
-}
 
 // === TELEGRAM ===
 
@@ -128,78 +62,16 @@ async function sendTelegramMessage(config: AppConfig, message: string): Promise<
 // Job completion handler - only notifies on failures now
 // Success notifications are handled by the @telegram agent in the prompt
 function getJobCompletionHandler(searchName: string) {
-  return async (result: { job: { status: string; id: string; searchSlug?: string } }) => {
+  return async (result: { job: { status: string }; success: boolean }) => {
     const config = getConfig();
     if (!config.telegramBotToken || !config.telegramChatId) return;
     
     // Only send failure notifications from the server
     // Success notifications are sent by the @telegram agent
-    if (result.job.status === "failed") {
+    if (!result.success) {
       await sendTelegramMessage(config, `❌ Search failed: <b>${escapeHtml(searchName)}</b>`);
     }
   };
-}
-
-// === PROMPT BUILDER ===
-
-function buildPrompt(searchTerm: string, config: AppConfig): string {
-  const hasTelegram = !!(config.telegramBotToken && config.telegramChatId);
-  
-  let prompt = `@fb-marketplace
-
-Search for deals on Facebook Marketplace.
-
-## Search Details
-- **Search Term**: ${searchTerm}
-- **Location**: ${config.location}
-
-Find the best deals matching "${searchTerm}" in ${config.location}.
-
-Write a markdown report with:
-- **Top Picks** (3-5 best deals with direct Facebook links)
-- **Other Options** (table with price, item, link)
-- **What to Avoid** (overpriced or sketchy listings)
-
-Save the report to: {{reportPath}}
-
----
-
-@title
-
-Generate a concise title for this search job.
-
-- Original search term: "${searchTerm}"
-- Location: ${config.location}
-- Report path: {{reportPath}}
-- Search slug: {{searchSlug}}
-- Job ID: {{jobId}}
-
-Read the report and generate a short, descriptive title (max 50 chars).
-Save it via: POST http://localhost:3456/api/job/{{searchSlug}}/{{jobId}}/title
-`;
-
-  // If Telegram is configured, add the @telegram agent to send a summary
-  if (hasTelegram) {
-    prompt += `
----
-
-@telegram
-
-Send a Telegram notification with the top 3-5 deals.
-Read the report from {{reportPath}} and send a concise summary.
-
-First, get the job title:
-\`\`\`bash
-curl -s http://localhost:3456/api/job/{{searchSlug}}/{{jobId}}/title
-\`\`\`
-
-Use that title as the header. Include:
-- Best deals with prices and Facebook links
-- Keep it short and scannable
-`;
-  }
-
-  return prompt;
 }
 
 // === HELPERS ===
@@ -310,8 +182,8 @@ function layout(title: string, content: string): string {
     <nav class="bg-white shadow-sm border-b">
       <div class="max-w-4xl mx-auto px-4 py-3">
         <div class="flex items-center justify-between">
-          <a href="/" class="text-xl font-bold text-gray-900">🛒 Marketplace Tracker</a>
-          <a href="/settings" class="text-gray-600 hover:text-gray-900">⚙️ Settings</a>
+          <a href="/" class="text-xl font-bold text-gray-900">Marketplace Tracker</a>
+          <a href="/settings" class="text-gray-600 hover:text-gray-900">Settings</a>
         </div>
       </div>
     </nav>
@@ -365,20 +237,20 @@ app.get("/", (c) => {
             <span class="text-blue-900">Running: <strong>${escapeHtml(running.searchSlug)}</strong></span>
           </div>
           <button 
-            hx-post="/api/cancel/${running.searchSlug}/${running.job.id}"
+            hx-post="/api/cancel/${running.searchSlug}/${running.jobId}"
             hx-swap="none"
             class="text-sm px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200">
             Stop
           </button>
         </div>
         <div class="text-xs text-blue-800 font-mono bg-blue-100 p-2 rounded">
-          Watch live: <code class="select-all">${getAttachCommand(running.job.id)}</code>
+          Watch live: <code class="select-all">${getAttachCommand(running.jobId)}</code>
         </div>
       </div>
     ` : ""}
 
     <div class="bg-white rounded-xl shadow-sm border p-6 mb-8">
-      <h2 class="text-lg font-semibold text-gray-900 mb-4">🔍 New Search</h2>
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">New Search</h2>
       <form hx-post="/api/search" hx-target="#search-result" hx-swap="innerHTML" id="search-form">
         <div class="flex gap-3">
           <textarea 
@@ -398,7 +270,7 @@ app.get("/", (c) => {
         <p class="text-sm text-gray-500 mt-2">
           <span class="text-gray-400">Shift+Enter for new line</span> · 
           Location: <strong>${escapeHtml(config.location || "sanfrancisco")}</strong>
-          ${hasTelegram ? ` · Telegram: <strong class="text-green-600">✓ enabled</strong>` : ` · <a href="/settings" class="text-blue-600 underline">Enable Telegram notifications</a>`}
+          ${hasTelegram ? ` · Telegram: <strong class="text-green-600">enabled</strong>` : ` · <a href="/settings" class="text-blue-600 underline">Enable Telegram notifications</a>`}
         </p>
         <div id="search-result" class="mt-3"></div>
       </form>
@@ -674,23 +546,15 @@ app.post("/api/search", async (c) => {
 
   const config = getConfig();
 
-  // Generate slug from search term
-  let slug = slugify(searchTerm);
-  let counter = 2;
-  while (searchExists(slug)) {
-    slug = `${slugify(searchTerm)}-${counter++}`;
-  }
+  // Create the search record
+  const search = createSearch({ name: searchTerm });
 
-  // Create the search with our built prompt (works with or without telegram)
-  const prompt = buildPrompt(searchTerm, config);
-  const search = createSearch({ name: searchTerm, prompt });
-
-  // Start the job immediately with Telegram notification on completion
   try {
-    await startJob(search.slug, {
+    // Start the job (creates job record, builds prompt, spawns opencode)
+    startJob(search.slug, searchTerm, config, {
       onComplete: getJobCompletionHandler(searchTerm),
-      transformPrompt: createPromptTransformer(),
     });
+    
     c.header("HX-Redirect", `/search/${search.slug}`);
     return c.html(`<div class="text-green-600">Search started!</div>`);
   } catch (error) {
@@ -714,11 +578,11 @@ app.post("/api/settings", async (c) => {
 // Test telegram connection
 app.post("/api/test-telegram", async (c) => {
   const config = getConfig();
-  const sent = await sendTelegramMessage(config, "✅ Test message from Marketplace Tracker");
+  const sent = await sendTelegramMessage(config, "Test message from Marketplace Tracker");
   if (sent) {
-    return c.html(`<span class="text-green-600">✓ Sent!</span>`);
+    return c.html(`<span class="text-green-600">Sent!</span>`);
   } else {
-    return c.html(`<span class="text-red-600">✗ Failed</span>`);
+    return c.html(`<span class="text-red-600">Failed</span>`);
   }
 });
 
@@ -765,11 +629,19 @@ app.get("/api/telegram/status", (c) => {
 app.post("/api/run/:slug", async (c) => {
   const slug = c.req.param("slug");
   const search = getSearch(slug);
+  
+  if (!search) {
+    return c.html(`<div class="text-red-600">Search not found</div>`, 404);
+  }
+
+  const config = getConfig();
+  
   try {
-    await startJob(slug, {
-      onComplete: getJobCompletionHandler(search?.name || slug),
-      transformPrompt: createPromptTransformer(),
+    // Re-run the search with a new job
+    rerunSearch(slug, search.name, config, {
+      onComplete: getJobCompletionHandler(search.name),
     });
+    
     c.header("HX-Refresh", "true");
     return c.html(`<div>Started</div>`);
   } catch (error) {
@@ -792,11 +664,19 @@ app.post("/api/cancel/:slug/:jobId", async (c) => {
 app.post("/api/search/:slug/delete", async (c) => {
   try {
     const slug = c.req.param("slug");
+    const search = getSearch(slug);
+    
     // Cancel any running job for this search first
     const running = getRunningJob();
     if (running && running.searchSlug === slug) {
-      cancelJob(slug, running.job.id);
+      cancelJob(slug, running.jobId);
     }
+    
+    // Unschedule if scheduled
+    if (search?.schedule) {
+      unscheduleSearch(slug);
+    }
+    
     deleteSearch(slug);
     c.header("HX-Redirect", "/");
     return c.html(`<div>Deleted</div>`);
@@ -809,8 +689,26 @@ app.post("/api/search/:slug/delete", async (c) => {
 app.post("/api/search/:slug/schedule", async (c) => {
   try {
     const slug = c.req.param("slug");
+    const search = getSearch(slug);
+    
+    if (!search) {
+      return c.html(`<div class="text-red-600">Search not found</div>`, 404);
+    }
+    
     const body = await c.req.parseBody();
     const schedule = (body.schedule as string)?.trim() || undefined;
+    const config = getConfig();
+    
+    // Unschedule old if exists
+    if (search.schedule) {
+      unscheduleSearch(slug);
+    }
+    
+    // Schedule new if provided
+    if (schedule) {
+      scheduleSearch(slug, search.name, schedule, config);
+    }
+    
     updateSearch(slug, { schedule });
     c.header("HX-Refresh", "true");
     return c.html(`<div>Schedule updated</div>`);
@@ -855,7 +753,7 @@ app.post("/api/job/:slug/:jobId/title", async (c) => {
     }
     
     const job = updateJob(slug, jobId, { title });
-    return c.json({ success: true, title: job.title });
+    return c.json({ success: true, title: job?.title });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : "Error" }, 500);
   }
@@ -885,14 +783,10 @@ function renderMarkdown(md: string): string {
 
 ensureDataDirs();
 
-// Start the scheduler (checks cron schedules every minute)
-startScheduler();
-
 const port = parseInt(process.env.PORT || "3456");
 console.log(`
-🛒 Marketplace Tracker
+Marketplace Tracker
    http://localhost:${port}
-   Scheduler: on (cron-based)
 `);
 
 export default { port, fetch: app.fetch };
