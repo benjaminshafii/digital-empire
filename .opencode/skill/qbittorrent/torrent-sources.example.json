@@ -1,0 +1,66 @@
+{
+  "sources": [
+    {
+      "name": "nyaa",
+      "url": "https://nyaa.si",
+      "type": "anime",
+      "searchPath": "/?f=0&c=0_0&q=",
+      "description": "Anime, manga, games, music from Japan"
+    },
+    {
+      "name": "1337x",
+      "url": "https://1337x.to",
+      "type": "general",
+      "searchPath": "/search/",
+      "description": "General torrents - movies, TV, games, software"
+    },
+    {
+      "name": "rarbg-index",
+      "url": "https://rargb.to",
+      "type": "general",
+      "searchPath": "/search/?search=",
+      "description": "Movies, TV shows, games (RARBG successor)"
+    },
+    {
+      "name": "rutracker",
+      "url": "https://rutracker.org",
+      "type": "general",
+      "searchPath": "/forum/tracker.php?nm=",
+      "description": "Russian tracker - music, software, games"
+    },
+    {
+      "name": "fitgirl",
+      "url": "https://fitgirl-repacks.site",
+      "type": "games",
+      "searchPath": "/?s=",
+      "description": "Compressed game repacks"
+    },
+    {
+      "name": "eztv",
+      "url": "https://eztvx.to",
+      "type": "tv",
+      "searchPath": "/search/",
+      "description": "TV shows only"
+    },
+    {
+      "name": "yts",
+      "url": "https://yts.mx",
+      "type": "movies",
+      "searchPath": "/browse-movies/",
+      "description": "Movies only - small file sizes"
+    },
+    {
+      "name": "torrentgalaxy",
+      "url": "https://torrentgalaxy.to",
+      "type": "general",
+      "searchPath": "/torrents.php?search=",
+      "description": "General torrents with good UI"
+    }
+  ],
+  "preferences": {
+    "defaultSource": "nyaa",
+    "preferredQuality": "1080p",
+    "excludeKeywords": ["cam", "hdts", "telesync"],
+    "includeKeywords": []
+  }
+}
