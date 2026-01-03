@@ -2,7 +2,7 @@
 title: "Home Server 2026"
 date: "2026-01-02"
 ---
-
+> > A self-hosted AI system that lives on your machine and can safely execute real, credentialed workflows end to end.
 
 ### **Motivation**
 
@@ -27,15 +27,6 @@ Being productive in 2026 will be about:
     
 
   
-
-Lights are controlled by interfaces
-
-Sound is controlled by interfaces
-
-Robot vacuum is controlled by interfaces
-
-(Heating not connected yet)
-
 ---
 
 ### **Core Principles**
@@ -62,23 +53,15 @@ Robot vacuum is controlled by interfaces
 ### **Constraints**
 
 - Runs at home
-    
 - Can execute authenticated browsers for tasks without APIs
-    
 - Can be secured
-- Has access to lots of secrets 
-
-    
+- Has access to passwords
+- Can use the browser and avoids being flagged as a bot
 - Accessible from outside the local network
-    
 - Multi-user
-    
 - Designed primarily for high-trust users
-    
 - Supervisor system to keep tasks alive
-    
 - Task scheduling
-    
 
 ---
 
@@ -103,9 +86,10 @@ Robot vacuum is controlled by interfaces
 ## **Examples**
 
 - Deploying a simple SES email service and testing it end-to-end without human intervention
-    
 - Sending the robot vacuum to the kitchen at regular intervals
-    
+- Lights are controlled by interfaces
+- Creating and deploying 
+
 
 ---
 
@@ -116,13 +100,9 @@ Robot vacuum is controlled by interfaces
 **Software**
 
 - opencode (primarily via plugins)
-    
 - chrome MCP server
-    
 - claude opus 4.5 as the main driver
-    
 - prepare for local models
-
 - Most secrets provided via CLI bitwarded
   
 
