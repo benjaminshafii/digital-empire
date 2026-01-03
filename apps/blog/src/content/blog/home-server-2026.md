@@ -2,7 +2,7 @@
 title: "Home Server 2026"
 date: "2026-01-02"
 ---
-> > A self-hosted AI system that lives on your machine and can safely execute real, credentialed workflows end to end.
+> A self-hosted AI system that lives on your machine and can safely execute real, credentialed workflows end to end.
 
 ### **Motivation**
 
