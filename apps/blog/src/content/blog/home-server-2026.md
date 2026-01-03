@@ -48,14 +48,12 @@ Robot vacuum is controlled by interfaces
     The system updates its own docs, prompts, and skills when things don’t work.
 4. **Self-fixing**
     The system detects broken states and attempts repair automatically.
-5. **Reconstructable**
-    The system can rebuild itself from scratch using context and external sources.
-6. **Portable**
-    No user-specific data in the repo. Credentials live in standard locations (Bitwarden, env vars, OS keychain).
+5. **Reconstructable** / **Protable**
+    The system can rebuild its state from scratch by prompting the user to provide core information.
 7. **Open source**
     Shareable and inspectable as-is.
-8. **Standards first**
-    Use existing tools and protocols before building custom ones.
+8. **Boring where possible**
+    Prefer open standards, existing tools, and predictable failure modes.
 9. **Graceful degradation**
     If credentials or permissions are missing, the system guides the user to obtain them.
 
@@ -68,6 +66,8 @@ Robot vacuum is controlled by interfaces
 - Can execute authenticated browsers for tasks without APIs
     
 - Can be secured
+- Has access to lots of secrets 
+
     
 - Accessible from outside the local network
     
@@ -123,7 +123,7 @@ Robot vacuum is controlled by interfaces
     
 - prepare for local models
 
-
+- Most secrets provided via CLI bitwarded
   
 
 **Hardware**
