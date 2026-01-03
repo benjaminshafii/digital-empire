@@ -332,58 +332,39 @@
   }
 
   .prose blockquote {
-    @apply relative my-16 mx-0 md:-mx-8 py-10 px-8 md:px-12 border-none;
-    background: linear-gradient(135deg, rgba(0,0,0,0.015) 0%, transparent 70%);
+    @apply relative my-8 mx-0 py-4 pl-6 pr-4 border-none;
+    background: transparent;
   }
 
   /* Left accent bar */
   .prose blockquote::before {
     content: '';
-    @apply absolute left-0 top-6 bottom-6 w-[3px] bg-black;
+    @apply absolute left-0 top-0 bottom-0 w-[3px] bg-black;
   }
 
   /* Large decorative quote mark */
   .prose blockquote::after {
     content: '"';
     position: absolute;
-    top: -0.1em;
-    left: 0.5rem;
-    font-size: clamp(100px, 18vw, 180px);
+    top: -0.5rem;
+    left: 1rem;
+    font-size: 4rem;
     line-height: 1;
     font-family: Georgia, 'Times New Roman', serif;
-    font-weight: 400;
-    color: rgba(0, 0, 0, 0.04);
+    font-weight: 700;
+    color: rgba(0, 0, 0, 0.12);
     pointer-events: none;
     user-select: none;
   }
 
   .prose blockquote p {
-    @apply relative z-10 text-base leading-relaxed text-gray-800 mb-4;
+    @apply relative z-10 text-lg leading-relaxed text-gray-700 mb-3;
+    font-family: 'Libre Baskerville', Georgia, serif;
+    font-style: italic;
   }
 
   .prose blockquote p:last-child {
     @apply mb-0;
-  }
-
-  /* The actual quote: em > strong or strong > em */
-  .prose blockquote em strong,
-  .prose blockquote strong em {
-    @apply font-normal not-italic block text-[1.25rem] md:text-[1.5rem] leading-[1.55] mb-5;
-    font-family: 'Libre Baskerville', Georgia, serif;
-    font-style: italic;
-    color: #1a1a1a;
-  }
-
-  /* Attribution - styled via the parent p which contains plain text */
-  .prose blockquote p {
-    @apply font-mono text-[11px] md:text-[12px] uppercase tracking-[0.18em] text-gray-400 leading-relaxed;
-  }
-
-  /* But the quote text itself should override the p styles */
-  .prose blockquote p em,
-  .prose blockquote p strong {
-    text-transform: none;
-    letter-spacing: -0.01em;
   }
 
   .prose code {

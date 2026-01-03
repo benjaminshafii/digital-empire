@@ -10,8 +10,11 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/vercel": "^9.0.2",
     "astro": "^5.8.0",
     "posthog-js": "^1.305.0",
+    "satori": "^0.18.3",
+    "sharp": "^0.34.5",
     "three": "^0.174.0"
   },
   "devDependencies": {
