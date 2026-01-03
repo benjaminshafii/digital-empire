@@ -314,12 +314,21 @@
     @apply font-sans font-black text-xl tracking-tight-body mt-10 mb-4 leading-snug;
   }
 
-  .prose ul, .prose ol {
+  .prose ul {
     @apply mb-6 pl-6;
+    list-style-type: disc;
+    list-style-position: outside;
+  }
+
+  .prose ol {
+    @apply mb-6 pl-6;
+    list-style-type: decimal;
+    list-style-position: outside;
   }
 
   .prose li {
     @apply mb-3;
+    display: list-item;
   }
 
   .prose blockquote {
