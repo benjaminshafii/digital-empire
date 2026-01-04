@@ -57,6 +57,7 @@ interface Job {
   schedule: string
   prompt: string
   source?: string
+  workdir?: string
   createdAt: string
 }
 
@@ -117,12 +118,18 @@ function createLaunchdPlist(job: Job): string {
     .map(([k, v]) => `    <key>${k}</key>\n    <integer>${v}</integer>`)
     .join("\n")
   
+  // Use workdir if specified, otherwise default to home directory
+  const workdir = job.workdir || homedir()
+  
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
   <key>Label</key>
   <string>${label}</string>
+  
+  <key>WorkingDirectory</key>
+  <string>${workdir}</string>
   
   <key>ProgramArguments</key>
   <array>
@@ -212,12 +219,14 @@ function cronToSystemdCalendar(cron: string): string {
 function createSystemdService(job: Job): string {
   const opencode = findOpencode()
   const logPath = join(LOGS_DIR, `${job.slug}.log`)
+  const workdir = job.workdir || homedir()
   
   return `[Unit]
 Description=OpenCode Job: ${job.name}
 
 [Service]
 Type=oneshot
+WorkingDirectory=${workdir}
 ExecStart=${opencode} run "${job.prompt.replace(/"/g, '\\"')}"
 StandardOutput=append:${logPath}
 StandardError=append:${logPath}
@@ -395,8 +404,9 @@ export const SchedulerPlugin: Plugin = async ({ $ }) => {
           schedule: tool.schema.string().describe("Cron expression: '0 9 * * *' (daily 9am), '0 */6 * * *' (every 6h), '30 8 * * 1' (Monday 8:30am)"),
           prompt: tool.schema.string().describe("The prompt to run, can include @agent tags"),
           source: tool.schema.string().optional().describe("Optional: source app (e.g. 'marketplace', 'twitter') - used for filtering"),
+          workdir: tool.schema.string().optional().describe("Optional: working directory to run from (for MCP config). Defaults to current directory."),
         },
-        async execute(args) {
+        async execute(args, context) {
           const slug = args.source 
             ? `${args.source}-${slugify(args.name)}`
             : slugify(args.name)
@@ -405,12 +415,16 @@ export const SchedulerPlugin: Plugin = async ({ $ }) => {
             return `Job "${slug}" already exists. Delete it first or use a different name.`
           }
           
+          // Use provided workdir, or try to get current directory from context, or fall back to home
+          const workdir = args.workdir || process.cwd()
+          
           const job: Job = {
             slug,
             name: args.name,
             schedule: args.schedule,
             prompt: args.prompt,
             source: args.source,
+            workdir,
             createdAt: new Date().toISOString()
           }
           
