@@ -37,10 +37,7 @@
     },
     "browser": {
       "type": "local",
-      "command": [
-        "node",
-        "/Users/benjaminshafii/.npm/_npx/8096bb92ae86a312/node_modules/@different-ai/opencode-browser/src/server.js"
-      ],
+      "command": ["npx", "@different-ai/opencode-browser", "start"],
       "enabled": true
     }
   },
