@@ -136,15 +136,116 @@ https://mail.google.com/mail/u/1/  # Second account
 | Error | Solution |
 |-------|----------|
 | "Not connected to browser extension" | Open Chrome, enable extension, click to connect |
-| Navigation timeout | Usually OK - page loaded, continue |
-| Element not found | Take fresh snapshot, selector may have changed |
-| CSP blocks execute | Use click/type instead of JavaScript eval |
+| "Navigation timeout" | Usually OK - page loaded, continue |
+| "Element not found" | Take fresh snapshot, selector may have changed |
+| "CSP blocks execute" | Use click/type instead of JavaScript eval |
+| "Scrolling may not work on fixed-layout sites" | Use selector scrolling |
+| "Port in use by another session" | Use `browser_kill_session` to take over. Wait 5-10 seconds before retrying |
+| "Cannot start WebSocket server" | Port 19222 is in use by another application |
 
 ## Limitations
 
 1. **No JavaScript eval on some sites** - CSP blocks `browser_browser_execute` on Gmail, Facebook, etc. Use click/type instead.
 2. **Scrolling** - Pixel scrolling may not work on fixed-layout sites. Use selector scrolling.
 3. **Single browser** - Controls whatever Chrome is connected, not multiple instances.
+
+---
+
+## Test Cases
+
+### Basic Operations
+
+#### Test 1: Single Session - Navigate
+```
+1. Check browser_status should show "Browser available (no active session)"
+2. Call browser_navigate to https://google.com
+3. Call browser_snapshot to verify page loaded
+```
+
+#### Test 2: Multi-Session - Lock Detected
+```
+1. Start OpenCode in Terminal 1 - will acquire lock
+2. Start OpenCode in Terminal 2
+3. In Terminal 2, call browser_status
+4. Should show "Browser locked by another session (PID <PID1>)"
+5. Try to call browser_navigate in Terminal 2
+6. Should error: "Browser locked... Use browser_kill_session to take over"
+7. Call browser_kill_session in Terminal 2
+8. Terminal 2 should now own browser
+9. Terminal 1's browser_status should now show "Browser available"
+```
+
+#### Test 3: Stale Lock Recovery
+```
+1. Start OpenCode, it acquires lock
+2. OpenCode crashes (but lock file remains)
+3. Start new OpenCode session
+4. Lock file shows stale PID
+5. Call browser_navigate - should auto-clean stale lock and work
+```
+
+#### Test 4: Port Conflict with Non-Browser App
+```
+1. Some other app uses port 19222
+2. Start OpenCode, checkPortAvailable() returns false (port in use)
+3. Call browser_navigate
+4. Should error: "Port 19222 is in use... Use browser_kill_session to take over."
+5. (Note: browser_kill_session should NOT work in this case since the port owner is not OpenCode browser)
+```
+
+#### Test 5: Chrome Not Running
+```
+1. Chrome is closed
+2. Extension not connected (isConnected = false)
+3. Call browser_status
+4. Should show: "Browser available (no active session), Extension: not connected"
+5. Try to call browser_navigate
+6. Should error: "Chrome extension not connected..."
+```
+
+#### Test 6: Screenshot Persists
+```
+1. Navigate to google.com
+2. Call browser_screenshot({ name: "google-search" })
+3. Screenshot saved to: ~/.opencode-browser/screenshots/google-search.png
+4. Call browser_screenshot again
+5. New screenshot: ~/.opencode-browser/screenshots/google-search-2.png
+6. Verify you can compare screenshots between sessions
+```
+
+#### Test 7: Full Workflow
+```
+1. browser_status → verify available
+2. browser_navigate → navigate to URL
+3. browser_snapshot → get page structure
+4. browser_click → click using selector
+5. browser_type → fill form
+6. browser_screenshot → capture visual
+7. browser_wait → wait for dynamic content
+8. browser_execute → run JS to get dynamic data
+9. browser_get_tabs → list all tabs
+```
+
+### Expected Results for Each Test
+
+| Test | browser_status | browser_navigate | Expected Flow |
+|-------|---------------|-----------------|
+| Test 1 | "Browser available" | Success | Lock acquired, server started |
+| Test 2 | "Browser locked by..." | Error | Cannot acquire, graceful message |
+| Test 3 | "Browser available" | Success | Stale lock auto-cleaned |
+| Test 4 | "Port 19222 is in use..." | Error | Port conflict, helpful error |
+| Test 5 | "...Extension: not connected" | Info | No crash, clear error message |
+| Test 6 | Saved to: ~/.opencode-browser/screenshots/ | Success | Screenshots persist |
+| Test 7 | Multiple operations | Success | Full end-to-end workflow |
+
+### Troubleshooting
+
+If tests fail, check:
+1. Is Chrome running? Extension badge should show "ON"
+2. Check OpenCode logs for `[browser-plugin]` messages
+3. Verify lock file: `cat ~/.opencode-browser/lock.json`
+4. Port check: `lsof -i :19222` or `nc -z localhost 19222`
+
 
 ## Example: Gmail Reply
 
@@ -189,3 +290,21 @@ browser_browser_click({ selector: "button[name='login']" })
 browser_browser_wait({ ms: 3000 })
 browser_browser_snapshot()
 ```
+
+### Basic Operations
+
+#### Test 1: Single Session - Navigate
+\`\`
+1. Check browser_status should show "Browser available (no active session)"
+2. Call browser_navigate to https://google.com
+3. Call browser_snapshot to verify page loaded
+\`\`
+
+#### Test 2: Multi-Session - Lock Detected
+\`\`
+1. Start OpenCode in Terminal 1 - will acquire lock
+2. Start OpenCode in Terminal 2 - browser_status should show locked
+3. In Terminal 2, call browser_kill_session
+4. Terminal 2's browser_status should now show "Browser available"
+\`\`
+
