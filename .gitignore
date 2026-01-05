@@ -43,5 +43,8 @@ outputs/
 .opencode/skill/*/SKILL.md
 !.opencode/skill/self-improve/SKILL.md
 !.opencode/skill/website-deploy/SKILL.md
+!.opencode/skill/chrome-mcp/SKILL.md
+!.opencode/skill/browser/SKILL.md
 !.opencode/skill/*/SKILL.example.md
 .opencode/skill/qbittorrent/torrent-sources.json
+.opencode/skill/telegram/telegram-chats.json

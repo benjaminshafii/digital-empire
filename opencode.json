@@ -34,12 +34,10 @@
         "--channel=beta"
       ],
       "enabled": false
-    },
-    "browser": {
-      "type": "local",
-      "command": ["npx", "@different-ai/opencode-browser", "start"],
-      "enabled": true
     }
   },
+  "plugin": [
+    "@different-ai/opencode-browser"
+  ],
   "agent": {}
 }
