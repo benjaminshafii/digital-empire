@@ -40,6 +40,10 @@ const createMockSettings = (overrides: Partial<PluginSettings> = {}): PluginSett
   targetPath: "apps/blog/src/content/blog",
   branch: "main",
   syncedNotes: {},
+  collabServerUrl: "ws://127.0.0.1:1234",
+  collabAutosave: true,
+  collabAutosaveDebounceMs: 1500,
+  collabExportFolder: "collab",
   ...overrides,
 });
 

@@ -6,6 +6,13 @@
  */
 
 import { Menu, Notice, Plugin, TFile } from "obsidian";
+import type { PluginSettings } from "./types";
+import { DEFAULT_SETTINGS } from "./types";
+import { SyncService } from "./services/sync";
+import { WebsiteSyncSettingTab } from "./ui/settings-tab";
+import { SyncStatusView, SYNC_VIEW_TYPE } from "./ui/sync-view";
+import { CollabNoteView, COLLAB_VIEW_TYPE } from "./ui/collab-view";
+import { StatusBarManager } from "./ui/status-bar";
 import { buildCollabSnapshotPath } from "./services/collab-export";
 import { generateSlug } from "./services/transformer";
 
@@ -56,6 +63,15 @@ export default class WebsiteSyncPlugin extends Plugin {
       name: "Quick Publish: Add frontmatter, move to folder, and sync",
       callback: async () => {
         await this.quickPublish();
+      },
+    });
+
+    // Command: export collab snapshot
+    this.addCommand({
+      id: "export-collab-snapshot",
+      name: "Export collaborative note as markdown snapshot",
+      callback: async () => {
+        await this.exportCollabSnapshot();
       },
     });
 
@@ -279,6 +295,51 @@ publish: true
     } catch (error) {
       console.error("Quick publish error:", error);
       new Notice(`Quick publish failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  }
+
+  async exportCollabSnapshot(): Promise<void> {
+    const activeFile = this.app.workspace.getActiveFile();
+    if (!activeFile) {
+      new Notice("No file selected");
+      return;
+    }
+
+    if (activeFile.extension !== "md") {
+      new Notice("Can only export markdown files");
+      return;
+    }
+
+    const leaves = this.app.workspace.getLeavesOfType(COLLAB_VIEW_TYPE);
+    const collabView = leaves[0]?.view;
+    if (!collabView || !(collabView instanceof CollabNoteView)) {
+      new Notice("Please open the collaboration view for the active note");
+      return;
+    }
+
+    const collabText = collabView.getCurrentText();
+    if (!collabText) {
+      new Notice("No collaborative content to export");
+      return;
+    }
+
+    const exportPath = buildCollabSnapshotPath(
+      activeFile.path,
+      this.settings.collabExportFolder
+    );
+    const exportFolder = this.settings.collabExportFolder;
+
+    try {
+      const folder = this.app.vault.getAbstractFileByPath(exportFolder);
+      if (!folder) {
+        await this.app.vault.createFolder(exportFolder);
+      }
+
+      await this.app.vault.create(exportPath, collabText);
+      new Notice(`Exported snapshot to ${exportPath}`);
+    } catch (error) {
+      console.error("Export error:", error);
+      new Notice(`Export failed: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   }
 }

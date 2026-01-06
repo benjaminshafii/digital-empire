@@ -47,14 +47,15 @@ export class CollabNoteView extends ItemView {
     return "users";
   }
 
-  async setState(state: CollabViewState, result: unknown): Promise<unknown> {
+  async applyState(state: CollabViewState): Promise<void> {
     this.filePath = state.filePath;
     await this.openForCurrentState();
-    return result;
   }
 
-  getState(): CollabViewState | null {
-    if (!this.filePath) return null;
+  getState(): CollabViewState {
+    if (!this.filePath) {
+      return { filePath: "" };
+    }
     return { filePath: this.filePath };
   }
 
@@ -90,51 +91,6 @@ export class CollabNoteView extends ItemView {
       container.createEl("div", { cls: "collab-view-empty", text: "No file selected." });
       return;
     }
-
-
-    const abstract = this.app.vault.getAbstractFileByPath(this.filePath);
-    if (!(abstract instanceof TFile) || abstract.extension !== "md") {
-      container.createEl("div", { cls: "collab-view-empty", text: "Not a markdown file." });
-      return;
-    }
-
-    const serverUrl = this.plugin.settings.collabServerUrl;
-    if (!serverUrl) {
-      new Notice("Set Collaboration server URL in settings");
-      container.createEl("div", { cls: "collab-view-empty", text: "Missing server URL." });
-      return;
-    }
-
-
-
-    const abstract = this.app.vault.getAbstractFileByPath(this.filePath);
-    if (!(abstract instanceof TFile) || abstract.extension !== "md") {
-      container.createEl("div", { cls: "collab-note-view-empty", text: "Not a markdown file." });
-      return;
-    }
-
-    const serverUrl = this.plugin.settings.collabServerUrl;
-    if (!serverUrl) {
-      new Notice("Set Collaboration server URL in settings");
-      container.createEl("div", { cls: "collab-note-view-empty", text: "Missing server URL." });
-      return;
-    }
-
-
-    const abstract = this.app.vault.getAbstractFileByPath(this.filePath);
-    if (!(abstract instanceof TFile) || abstract.extension !== "md") {
-      container.createEl("div", { cls: "collab-view-empty", text: "Not a markdown file." });
-      return;
-    }
-
-    const serverUrl = this.plugin.settings.collabServerUrl;
-    if (!serverUrl) {
-      new Notice("Set Collaboration server URL in settings");
-      container.createEl("div", { cls: "collab-view-empty", text: "Missing server URL." });
-      return;
-    }
-
-
 
     const abstract = this.app.vault.getAbstractFileByPath(this.filePath);
     if (!(abstract instanceof TFile) || abstract.extension !== "md") {
