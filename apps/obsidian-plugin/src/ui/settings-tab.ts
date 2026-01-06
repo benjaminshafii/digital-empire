@@ -140,6 +140,83 @@ export class WebsiteSyncSettingTab extends PluginSettingTab {
     // Sync Status Section
     containerEl.createEl("h3", { text: "Sync Status" });
 
+    containerEl.createEl("h3", { text: "Collaboration" });
+
+    new Setting(containerEl)
+      .setName("Collaboration server URL")
+      .setDesc("WebSocket URL for the collaboration server")
+      .addText((text) =>
+        text
+          .setPlaceholder("ws://127.0.0.1:1234")
+          .setValue(this.plugin.settings.collabServerUrl)
+          .onChange(async (value) => {
+            this.plugin.settings.collabServerUrl = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Collaboration autosave")
+      .setDesc("Automatically write collaborative edits back to the vault")
+      .addToggle((toggle) =>
+        toggle.setValue(this.plugin.settings.collabAutosave).onChange(async (value) => {
+          this.plugin.settings.collabAutosave = value;
+          await this.plugin.saveSettings();
+        })
+      );
+
+    new Setting(containerEl)
+      .setName("Autosave debounce (ms)")
+      .setDesc("How long to wait before writing changes back to disk")
+      .addText((text) =>
+        text
+          .setPlaceholder("1500")
+          .setValue(String(this.plugin.settings.collabAutosaveDebounceMs))
+          .onChange(async (value) => {
+            const parsed = Number(value);
+            if (!Number.isFinite(parsed) || parsed < 0) return;
+            this.plugin.settings.collabAutosaveDebounceMs = Math.floor(parsed);
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Export folder")
+      .setDesc("Vault folder to store exported collaborative snapshots")
+      .addText((text) =>
+        text
+          .setPlaceholder("collab")
+          .setValue(this.plugin.settings.collabExportFolder)
+          .onChange(async (value) => {
+            this.plugin.settings.collabExportFolder = value;
+            await this.plugin.saveSettings();
+          })
+      )
+      .addButton((button) =>
+        button.setButtonText("Create folder").onClick(async () => {
+          const folderPath = this.plugin.settings.collabExportFolder;
+          if (!folderPath) {
+            new Notice("Please enter a folder name first.");
+            return;
+          }
+
+          const folder = this.app.vault.getAbstractFileByPath(folderPath);
+          if (folder) {
+            new Notice(`Folder "${folderPath}" already exists.`);
+            return;
+          }
+
+          try {
+            await this.app.vault.createFolder(folderPath);
+            new Notice(`Folder "${folderPath}" created successfully.`);
+          } catch (error) {
+            new Notice(
+              `Failed to create folder: ${error instanceof Error ? error.message : "Unknown error"}`
+            );
+          }
+        })
+      );
+
     const syncedCount = Object.keys(this.plugin.settings.syncedNotes).length;
     new Setting(containerEl)
       .setName("Synced notes")

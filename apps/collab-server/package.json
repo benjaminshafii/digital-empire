@@ -1,0 +1,18 @@
+{
+  "name": "@digital-empire/collab-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Yjs websocket collaboration server for Obsidian local-first editing",
+  "scripts": {
+    "dev": "HOST=127.0.0.1 PORT=1234 node src/server.js",
+    "start": "HOST=0.0.0.0 PORT=1234 node src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "lib0": "^0.2.114",
+    "ws": "^8.18.3",
+    "y-protocols": "^1.0.6",
+    "yjs": "^13.6.29"
+  }
+}

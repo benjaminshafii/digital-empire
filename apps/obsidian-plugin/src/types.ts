@@ -42,6 +42,11 @@ export interface PluginSettings {
   targetPath: string; // e.g., "apps/blog/src/content/blog"
   branch: string; // Default: "main"
   syncedNotes: Record<string, PersistedSyncState>;
+
+  collabServerUrl: string;
+  collabAutosave: boolean;
+  collabAutosaveDebounceMs: number;
+  collabExportFolder: string;
 }
 
 // Default settings
@@ -53,6 +58,11 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   targetPath: "apps/blog/src/content/blog",
   branch: "main",
   syncedNotes: {},
+
+  collabServerUrl: "ws://127.0.0.1:1234",
+  collabAutosave: true,
+  collabAutosaveDebounceMs: 1500,
+  collabExportFolder: "collab",
 };
 
 // GitHub API response types

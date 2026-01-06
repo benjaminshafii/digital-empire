@@ -5,13 +5,8 @@
  * Uses atomic sync - one button, one commit, folder matches exactly what's in Obsidian.
  */
 
-import { Plugin, Notice, TFile, Menu } from "obsidian";
-import type { PluginSettings } from "./types";
-import { DEFAULT_SETTINGS } from "./types";
-import { SyncService } from "./services/sync";
-import { WebsiteSyncSettingTab } from "./ui/settings-tab";
-import { SyncStatusView, SYNC_VIEW_TYPE } from "./ui/sync-view";
-import { StatusBarManager } from "./ui/status-bar";
+import { Menu, Notice, Plugin, TFile } from "obsidian";
+import { buildCollabSnapshotPath } from "./services/collab-export";
 import { generateSlug } from "./services/transformer";
 
 export default class WebsiteSyncPlugin extends Plugin {
@@ -26,6 +21,7 @@ export default class WebsiteSyncPlugin extends Plugin {
     this.initSyncService();
 
     this.registerView(SYNC_VIEW_TYPE, (leaf) => new SyncStatusView(leaf, this));
+    this.registerView(COLLAB_VIEW_TYPE, (leaf) => new CollabNoteView(leaf, this));
     this.addSettingTab(new WebsiteSyncSettingTab(this.app, this));
 
     const statusBarEl = this.addStatusBarItem();
