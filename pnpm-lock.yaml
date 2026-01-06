@@ -73,9 +73,18 @@ importers:
 
   apps/obsidian-plugin:
     dependencies:
+      '@codemirror/commands':
+        specifier: ^6.10.1
+        version: 6.10.1
+      '@codemirror/state':
+        specifier: ^6.5.3
+        version: 6.5.3
+      '@codemirror/view':
+        specifier: ^6.39.8
+        version: 6.39.8
       y-codemirror.next:
         specifier: ^0.3.5
-        version: 0.3.5(@codemirror/state@6.5.0)(@codemirror/view@6.38.6)(yjs@13.6.29)
+        version: 0.3.5(@codemirror/state@6.5.3)(@codemirror/view@6.39.8)(yjs@13.6.29)
       y-websocket:
         specifier: ^3.0.0
         version: 3.0.0(yjs@13.6.29)
@@ -94,7 +103,7 @@ importers:
         version: 0.24.2
       obsidian:
         specifier: latest
-        version: 1.11.0(@codemirror/state@6.5.0)(@codemirror/view@6.38.6)
+        version: 1.11.0(@codemirror/state@6.5.3)(@codemirror/view@6.39.8)
       tslib:
         specifier: ^2.8.0
         version: 2.8.1
@@ -319,11 +328,17 @@ packages:
     resolution: {integrity: sha512-8XqW8xGn++Eqqbz3e9wKuK7mxryeRjs4LOHLxbh2lwKeSbuNR4NFifDZT4KzvjU6HMOPbiNTsWpniK5EJfTWkg==}
     engines: {node: '>=18'}
 
-  '@codemirror/state@6.5.0':
-    resolution: {integrity: sha512-MwBHVK60IiIHDcoMet78lxt6iw5gJOGSbNbOIVBHWVXIH4/Nq1+GQgLLGgI1KlnN86WDXsPudVaqYHKBIx7Eyw==}
+  '@codemirror/commands@6.10.1':
+    resolution: {integrity: sha512-uWDWFypNdQmz2y1LaNJzK7fL7TYKLeUAU0npEC685OKTF3KcQ2Vu3klIM78D7I6wGhktme0lh3CuQLv0ZCrD9Q==}
 
-  '@codemirror/view@6.38.6':
-    resolution: {integrity: sha512-qiS0z1bKs5WOvHIAC0Cybmv4AJSkAXgX5aD6Mqd2epSLlVJsQl8NG23jCVouIgkh4All/mrbdsf2UOLFnJw0tw==}
+  '@codemirror/language@6.12.1':
+    resolution: {integrity: sha512-Fa6xkSiuGKc8XC8Cn96T+TQHYj4ZZ7RdFmXA3i9xe/3hLHfwPZdM+dqfX0Cp0zQklBKhVD8Yzc8LS45rkqcwpQ==}
+
+  '@codemirror/state@6.5.3':
+    resolution: {integrity: sha512-MerMzJzlXogk2fxWFU1nKp36bY5orBG59HnPiz0G9nLRebWa0zXuv2siH6PLIHBvv5TH8CkQRqjBs0MlxCZu+A==}
+
+  '@codemirror/view@6.39.8':
+    resolution: {integrity: sha512-1rASYd9Z/mE3tkbC9wInRlCNyCkSn+nLsiQKZhEDUUJiUfs/5FHDpCUDaQpoTIaNGeDc6/bhaEAyLmeEucEFPw==}
 
   '@different-ai/opencode-browser@2.0.1':
     resolution: {integrity: sha512-7auuHJicRRZYADaD5MTR7gzEQOYgUUOJZfjBMWm3DXxPW85rNCo9IraLQsG+BnYZZX+TeUQx64L19zyaFJ7kJQ==}
@@ -1106,6 +1121,15 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
+
+  '@lezer/common@1.5.0':
+    resolution: {integrity: sha512-PNGcolp9hr4PJdXR4ix7XtixDrClScvtSCYW3rQG106oVMOOI+jFb+0+J3mbeL/53g1Zd6s0kJzaw6Ri68GmAA==}
+
+  '@lezer/highlight@1.2.3':
+    resolution: {integrity: sha512-qXdH7UqTvGfdVBINrgKhDsVTJTxactNNxLk7+UMwZhU13lMHaOBlJe9Vqp907ya56Y3+ed2tlqzys7jDkTmW0g==}
+
+  '@lezer/lr@1.4.6':
+    resolution: {integrity: sha512-u42yGuGBsHgodm86lwi0HAtUTNSs23yl9RoaI5em90B+OGm9/XuWkNiJ46sKkCgp8Tp4zgoBQbepcshfKLhFdw==}
 
   '@mapbox/node-pre-gyp@2.0.3':
     resolution: {integrity: sha512-uwPAhccfFJlsfCxMYTwOdVfOz3xqyj8xYL3zJj8f0pb30tLohnnFPhLuqp4/qoEz8sNxe4SESZedcBojRefIzg==}
@@ -3775,13 +3799,29 @@ snapshots:
     dependencies:
       fontkit: 2.0.4
 
-  '@codemirror/state@6.5.0':
+  '@codemirror/commands@6.10.1':
+    dependencies:
+      '@codemirror/language': 6.12.1
+      '@codemirror/state': 6.5.3
+      '@codemirror/view': 6.39.8
+      '@lezer/common': 1.5.0
+
+  '@codemirror/language@6.12.1':
+    dependencies:
+      '@codemirror/state': 6.5.3
+      '@codemirror/view': 6.39.8
+      '@lezer/common': 1.5.0
+      '@lezer/highlight': 1.2.3
+      '@lezer/lr': 1.4.6
+      style-mod: 4.1.3
+
+  '@codemirror/state@6.5.3':
     dependencies:
       '@marijn/find-cluster-break': 1.0.2
 
-  '@codemirror/view@6.38.6':
+  '@codemirror/view@6.39.8':
     dependencies:
-      '@codemirror/state': 6.5.0
+      '@codemirror/state': 6.5.3
       crelt: 1.0.6
       style-mod: 4.1.3
       w3c-keyname: 2.2.8
@@ -4242,6 +4282,16 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
+
+  '@lezer/common@1.5.0': {}
+
+  '@lezer/highlight@1.2.3':
+    dependencies:
+      '@lezer/common': 1.5.0
+
+  '@lezer/lr@1.4.6':
+    dependencies:
+      '@lezer/common': 1.5.0
 
   '@mapbox/node-pre-gyp@2.0.3':
     dependencies:
@@ -6049,10 +6099,10 @@ snapshots:
 
   object-hash@3.0.0: {}
 
-  obsidian@1.11.0(@codemirror/state@6.5.0)(@codemirror/view@6.38.6):
+  obsidian@1.11.0(@codemirror/state@6.5.3)(@codemirror/view@6.39.8):
     dependencies:
-      '@codemirror/state': 6.5.0
-      '@codemirror/view': 6.38.6
+      '@codemirror/state': 6.5.3
+      '@codemirror/view': 6.39.8
       '@types/codemirror': 5.60.8
       moment: 2.29.4
 
@@ -6959,10 +7009,10 @@ snapshots:
 
   xxhash-wasm@1.1.0: {}
 
-  y-codemirror.next@0.3.5(@codemirror/state@6.5.0)(@codemirror/view@6.38.6)(yjs@13.6.29):
+  y-codemirror.next@0.3.5(@codemirror/state@6.5.3)(@codemirror/view@6.39.8)(yjs@13.6.29):
     dependencies:
-      '@codemirror/state': 6.5.0
-      '@codemirror/view': 6.38.6
+      '@codemirror/state': 6.5.3
+      '@codemirror/view': 6.39.8
       lib0: 0.2.117
       yjs: 13.6.29
 

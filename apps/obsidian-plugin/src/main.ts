@@ -66,6 +66,15 @@ export default class WebsiteSyncPlugin extends Plugin {
       },
     });
 
+    // Command: open collab view
+    this.addCommand({
+      id: "open-collab-view",
+      name: "Open collaboration view",
+      callback: async () => {
+        await this.openCollabView();
+      },
+    });
+
     // Command: export collab snapshot
     this.addCommand({
       id: "export-collab-snapshot",
@@ -190,6 +199,37 @@ export default class WebsiteSyncPlugin extends Plugin {
       await leaf.setViewState({
         type: SYNC_VIEW_TYPE,
         active: true,
+      });
+      workspace.revealLeaf(leaf);
+    }
+  }
+
+  async openCollabView(): Promise<void> {
+    const activeFile = this.app.workspace.getActiveFile();
+    if (!activeFile) {
+      new Notice("Please open a file first");
+      return;
+    }
+
+    const { workspace } = this.app;
+
+    const existing = workspace.getLeavesOfType(COLLAB_VIEW_TYPE);
+    if (existing.length > 0) {
+      await existing[0].setViewState({
+        type: COLLAB_VIEW_TYPE,
+        active: true,
+        state: { filePath: activeFile.path },
+      });
+      workspace.revealLeaf(existing[0]);
+      return;
+    }
+
+    const leaf = workspace.getRightLeaf(false);
+    if (leaf) {
+      await leaf.setViewState({
+        type: COLLAB_VIEW_TYPE,
+        active: true,
+        state: { filePath: activeFile.path },
       });
       workspace.revealLeaf(leaf);
     }
