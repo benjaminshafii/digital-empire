@@ -27,7 +27,8 @@
     }
   },
   "plugin": [
-    "@different-ai/opencode-browser"
+    "@different-ai/opencode-browser",
+    "opencode-scheduler"
   ],
   "agent": {}
 }
