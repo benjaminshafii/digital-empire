@@ -39,12 +39,7 @@ outputs/
 *.key
 *.p12
 
-# OpenCode skills with credentials (use .example.md as template)
-.opencode/skill/*/SKILL.md
-!.opencode/skill/self-improve/SKILL.md
-!.opencode/skill/website-deploy/SKILL.md
-!.opencode/skill/chrome-mcp/SKILL.md
-!.opencode/skill/browser/SKILL.md
-!.opencode/skill/*/SKILL.example.md
+# OpenCode skill data files with credentials
+# Note: SKILL.md files are now tracked for portability
 .opencode/skill/qbittorrent/torrent-sources.json
 .opencode/skill/telegram/telegram-chats.json
