@@ -36,6 +36,20 @@ export default class ObsidianCollabPlugin extends Plugin {
         await this.openCollabView(file);
       })
     );
+
+    this.registerEvent(
+      this.app.workspace.on("file-open", async (file) => {
+        if (!file || file.extension !== "md") return;
+
+        const folderPrefix = this.settings.collabFolder.endsWith("/")
+          ? this.settings.collabFolder
+          : `${this.settings.collabFolder}/`;
+
+        if (!file.path.startsWith(folderPrefix)) return;
+
+        await this.openCollabView(file);
+      })
+    );
   }
 
   async loadSettings(): Promise<void> {

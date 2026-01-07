@@ -1,4 +1,5 @@
 import { ItemView, Modal, Notice, TFile, WorkspaceLeaf } from "obsidian";
+import type { ViewStateResult } from "obsidian";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { defaultKeymap, history, redo, undo } from "@codemirror/commands";
@@ -10,7 +11,7 @@ import { CollabSession, createRoomNameFromPath } from "../services/collab-sessio
 export const COLLAB_VIEW_TYPE = "collab-note-view";
 
 type CollabViewState = {
-  filePath: string;
+  filePath?: string;
 };
 
 type ResolutionChoice = "keep-crdt" | "overwrite-crdt-from-disk" | "fork-disk";
@@ -81,6 +82,7 @@ export class CollabNoteView extends ItemView {
   plugin: ObsidianCollabPlugin;
   filePath: string | null = null;
 
+
   private editorView: EditorView | null = null;
   private session: CollabSession | null = null;
   private saveTimer: number | null = null;
@@ -105,8 +107,16 @@ export class CollabNoteView extends ItemView {
     return "users";
   }
 
-  async applyState(state: CollabViewState): Promise<void> {
-    this.filePath = state.filePath;
+  async setState(state: unknown, result: { history: boolean }): Promise<void> {
+    const maybeState = state as Partial<CollabViewState> | null;
+
+    if (maybeState && typeof maybeState.filePath === "string" && maybeState.filePath.length > 0) {
+      this.filePath = maybeState.filePath;
+    } else {
+      const activeFile = this.app.workspace.getActiveFile();
+      this.filePath = activeFile?.path ?? null;
+    }
+
     await this.openForCurrentState();
   }
 
@@ -147,6 +157,18 @@ export class CollabNoteView extends ItemView {
 
   private async openForCurrentState(): Promise<void> {
     this.teardown();
+
+    const folderPrefix = this.plugin.settings.collabFolder.endsWith("/")
+      ? this.plugin.settings.collabFolder
+      : `${this.plugin.settings.collabFolder}/`;
+
+    // If opened without state, fall back to active file.
+    if (!this.filePath) {
+      const active = this.app.workspace.getActiveFile();
+      if (active && active.extension === "md" && active.path.startsWith(folderPrefix)) {
+        this.filePath = active.path;
+      }
+    }
 
     const container = this.containerEl.children[1];
     container.empty();

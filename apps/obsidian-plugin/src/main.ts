@@ -5,7 +5,7 @@
  * Uses atomic sync - one button, one commit, folder matches exactly what's in Obsidian.
  */
 
-import { Menu, Notice, Plugin, TFile } from "obsidian";
+import { Plugin, Notice, TFile, Menu } from "obsidian";
 import type { PluginSettings } from "./types";
 import { DEFAULT_SETTINGS } from "./types";
 import { SyncService } from "./services/sync";
@@ -26,7 +26,6 @@ export default class WebsiteSyncPlugin extends Plugin {
     this.initSyncService();
 
     this.registerView(SYNC_VIEW_TYPE, (leaf) => new SyncStatusView(leaf, this));
-    this.registerView(COLLAB_VIEW_TYPE, (leaf) => new CollabNoteView(leaf, this));
     this.addSettingTab(new WebsiteSyncSettingTab(this.app, this));
 
     const statusBarEl = this.addStatusBarItem();
@@ -61,24 +60,6 @@ export default class WebsiteSyncPlugin extends Plugin {
       name: "Quick Publish: Add frontmatter, move to folder, and sync",
       callback: async () => {
         await this.quickPublish();
-      },
-    });
-
-    // Command: open collab view
-    this.addCommand({
-      id: "open-collab-view",
-      name: "Open collaboration view",
-      callback: async () => {
-        await this.openCollabView();
-      },
-    });
-
-    // Command: export collab snapshot
-    this.addCommand({
-      id: "export-collab-snapshot",
-      name: "Export collaborative note as markdown snapshot",
-      callback: async () => {
-        await this.exportCollabSnapshot();
       },
     });
 
@@ -202,37 +183,6 @@ export default class WebsiteSyncPlugin extends Plugin {
     }
   }
 
-  async openCollabView(): Promise<void> {
-    const activeFile = this.app.workspace.getActiveFile();
-    if (!activeFile) {
-      new Notice("Please open a file first");
-      return;
-    }
-
-    const { workspace } = this.app;
-
-    const existing = workspace.getLeavesOfType(COLLAB_VIEW_TYPE);
-    if (existing.length > 0) {
-      await existing[0].setViewState({
-        type: COLLAB_VIEW_TYPE,
-        active: true,
-        state: { filePath: activeFile.path },
-      });
-      workspace.revealLeaf(existing[0]);
-      return;
-    }
-
-    const leaf = workspace.getRightLeaf(false);
-    if (leaf) {
-      await leaf.setViewState({
-        type: COLLAB_VIEW_TYPE,
-        active: true,
-        state: { filePath: activeFile.path },
-      });
-      workspace.revealLeaf(leaf);
-    }
-  }
-
   /**
    * Quick Publish: Add frontmatter, move to publish folder, then sync all.
    */
@@ -333,51 +283,6 @@ publish: true
     } catch (error) {
       console.error("Quick publish error:", error);
       new Notice(`Quick publish failed: ${error instanceof Error ? error.message : "Unknown error"}`);
-    }
-  }
-
-  async exportCollabSnapshot(): Promise<void> {
-    const activeFile = this.app.workspace.getActiveFile();
-    if (!activeFile) {
-      new Notice("No file selected");
-      return;
-    }
-
-    if (activeFile.extension !== "md") {
-      new Notice("Can only export markdown files");
-      return;
-    }
-
-    const leaves = this.app.workspace.getLeavesOfType(COLLAB_VIEW_TYPE);
-    const collabView = leaves[0]?.view;
-    if (!collabView || !(collabView instanceof CollabNoteView)) {
-      new Notice("Please open the collaboration view for the active note");
-      return;
-    }
-
-    const collabText = collabView.getCurrentText();
-    if (!collabText) {
-      new Notice("No collaborative content to export");
-      return;
-    }
-
-    const exportPath = buildCollabSnapshotPath(
-      activeFile.path,
-      this.settings.collabExportFolder
-    );
-    const exportFolder = this.settings.collabExportFolder;
-
-    try {
-      const folder = this.app.vault.getAbstractFileByPath(exportFolder);
-      if (!folder) {
-        await this.app.vault.createFolder(exportFolder);
-      }
-
-      await this.app.vault.create(exportPath, collabText);
-      new Notice(`Exported snapshot to ${exportPath}`);
-    } catch (error) {
-      console.error("Export error:", error);
-      new Notice(`Export failed: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   }
 }

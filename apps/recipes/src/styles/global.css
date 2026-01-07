@@ -1,0 +1,124 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-paper text-ink font-sans;
+  }
+
+  /* Hide number input spinners */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer components {
+  /* Paper texture overlay */
+  .paper-texture {
+    position: relative;
+  }
+  .paper-texture::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.08;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)' opacity='0.5'/%3E%3C/svg%3E");
+  }
+
+  /* Industrial label style */
+  .label-stamp {
+    @apply font-mono text-[10px] uppercase tracking-widest;
+    color: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    padding: 0.3rem 0.45rem;
+    line-height: 1;
+  }
+
+  /* Recipe card */
+  .recipe-card {
+    @apply bg-white border border-ink/10 p-4 transition-all duration-200;
+  }
+  .recipe-card:hover {
+    @apply border-ink/30 shadow-sm;
+  }
+
+  /* Tag pill */
+  .tag {
+    @apply font-mono text-[10px] bg-ink/5 px-2 py-1 uppercase tracking-wide text-ink-muted inline-block;
+  }
+
+  /* Time badge */
+  .time-badge {
+    @apply font-mono text-xs text-ink-muted flex items-center gap-1;
+  }
+
+  /* Ingredient row */
+  .ingredient-row {
+    @apply flex justify-between items-center py-3 border-b border-ink/10 last:border-b-0;
+  }
+  .ingredient-row.checked {
+    @apply opacity-40;
+  }
+  .ingredient-row.checked .ingredient-name {
+    @apply line-through;
+  }
+
+  /* Step item */
+  .step-item {
+    @apply relative pl-10 pb-6 border-l-2 border-ink/10 last:border-l-0 last:pb-0;
+  }
+  .step-item::before {
+    content: attr(data-step);
+    @apply absolute left-0 -translate-x-1/2 w-6 h-6 bg-ink text-white font-mono text-xs flex items-center justify-center;
+  }
+  .step-item.checked {
+    @apply opacity-50;
+  }
+  .step-item.checked::before {
+    @apply bg-accent;
+    content: '✓';
+  }
+
+  /* Servings input */
+  .servings-input {
+    @apply font-mono text-2xl font-semibold bg-transparent border-b-2 border-ink/20 w-16 text-center focus:outline-none focus:border-ink;
+  }
+
+  /* Search input */
+  .search-input {
+    @apply w-full px-4 py-3 font-mono text-sm bg-white border border-ink/20 focus:outline-none focus:border-ink placeholder:text-ink-muted/50;
+  }
+
+  /* Section header */
+  .section-header {
+    @apply font-mono text-[11px] uppercase tracking-widest text-ink-muted mb-4 pb-2 border-b border-ink/10;
+  }
+
+  /* Notes box */
+  .notes-box {
+    @apply bg-ink/5 p-4 font-serif text-sm italic text-ink-light;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

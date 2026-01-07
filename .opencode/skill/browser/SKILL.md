@@ -27,6 +27,33 @@ All tools are prefixed with `browser_browser_`:
 | `browser_browser_wait` | Wait for specified milliseconds | Low |
 | `browser_browser_execute` | Run JavaScript (may fail due to CSP) | Low |
 | `browser_browser_get_tabs` | List open tabs | Low |
+| `browser_browser_status` | Check browser lock status | Low |
+| `browser_browser_release` | Release browser lock when done | Low |
+| `browser_browser_takeover` | Request lock from another session (no kill) | Low |
+| `browser_browser_force_kill_session` | Force kill blocking session (last resort) | Low |
+
+## Session Management
+
+The browser plugin uses a lock file to ensure only one OpenCode session controls Chrome at a time.
+
+### Auto-Takeover (v2.0.2+)
+
+When your session tries to use the browser but another session holds the lock:
+1. The plugin automatically sends a **soft release signal** (SIGUSR1) to the blocking session
+2. The blocking session releases the lock without terminating
+3. Your session takes over seamlessly
+
+This means **you rarely need to manually handle lock conflicts** - just call `browser_browser_navigate` and it will work.
+
+### Releasing When Done
+
+**Always release the browser lock when your task is complete:**
+
+```
+browser_browser_release()
+```
+
+This allows other sessions to use the browser without waiting for the 2-hour TTL.
 
 ## Quick Usage
 
@@ -140,8 +167,10 @@ https://mail.google.com/mail/u/1/  # Second account
 | "Element not found" | Take fresh snapshot, selector may have changed |
 | "CSP blocks execute" | Use click/type instead of JavaScript eval |
 | "Scrolling may not work on fixed-layout sites" | Use selector scrolling |
-| "Port in use by another session" | Use `browser_kill_session` to take over. Wait 5-10 seconds before retrying |
+| "Browser locked... Auto-takeover failed" | Use `browser_browser_force_kill_session` as last resort |
 | "Cannot start WebSocket server" | Port 19222 is in use by another application |
+
+**Note:** As of v2.0.2, the plugin automatically attempts soft takeover when blocked by another session. Manual intervention is rarely needed.
 
 ## Limitations
 
@@ -162,17 +191,16 @@ https://mail.google.com/mail/u/1/  # Second account
 3. Call browser_snapshot to verify page loaded
 ```
 
-#### Test 2: Multi-Session - Lock Detected
+#### Test 2: Multi-Session - Auto Takeover
 ```
 1. Start OpenCode in Terminal 1 - will acquire lock
 2. Start OpenCode in Terminal 2
 3. In Terminal 2, call browser_status
 4. Should show "Browser locked by another session (PID <PID1>)"
 5. Try to call browser_navigate in Terminal 2
-6. Should error: "Browser locked... Use browser_kill_session to take over"
-7. Call browser_kill_session in Terminal 2
-8. Terminal 2 should now own browser
-9. Terminal 1's browser_status should now show "Browser available"
+6. Should auto-takeover: Terminal 1 releases, Terminal 2 takes over
+7. Terminal 1's browser_status should now show "Browser available (no active session)"
+8. Terminal 2 owns the browser
 ```
 
 #### Test 3: Stale Lock Recovery
@@ -229,9 +257,9 @@ https://mail.google.com/mail/u/1/  # Second account
 ### Expected Results for Each Test
 
 | Test | browser_status | browser_navigate | Expected Flow |
-|-------|---------------|-----------------|
+|-------|---------------|-----------------|---------------|
 | Test 1 | "Browser available" | Success | Lock acquired, server started |
-| Test 2 | "Browser locked by..." | Error | Cannot acquire, graceful message |
+| Test 2 | "Browser locked by..." | Success (auto-takeover) | Soft signal sent, lock transferred |
 | Test 3 | "Browser available" | Success | Stale lock auto-cleaned |
 | Test 4 | "Port 19222 is in use..." | Error | Port conflict, helpful error |
 | Test 5 | "...Extension: not connected" | Info | No crash, clear error message |
@@ -291,20 +319,14 @@ browser_browser_wait({ ms: 3000 })
 browser_browser_snapshot()
 ```
 
-### Basic Operations
+### Quick Reference
 
-#### Test 1: Single Session - Navigate
-\`\`
-1. Check browser_status should show "Browser available (no active session)"
-2. Call browser_navigate to https://google.com
-3. Call browser_snapshot to verify page loaded
-\`\`
+#### Release browser when done
+```
+browser_browser_release()
+```
 
-#### Test 2: Multi-Session - Lock Detected
-\`\`
-1. Start OpenCode in Terminal 1 - will acquire lock
-2. Start OpenCode in Terminal 2 - browser_status should show locked
-3. In Terminal 2, call browser_kill_session
-4. Terminal 2's browser_status should now show "Browser available"
-\`\`
-
+#### Check status
+```
+browser_browser_status()
+```
