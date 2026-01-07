@@ -10,7 +10,7 @@ description: Send notifications and messages via Telegram bot API
 source .env
 ```
 
-Credentials are stored in `/Users/benjaminshafii/digital-empire/.env`:
+Credentials are stored in `.env` (gitignored):
 ```
 TELEGRAM_BOT_TOKEN=...
 TELEGRAM_CHAT_ID=...  # Default chat (legacy, still works)
@@ -109,16 +109,6 @@ source .env && curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/
 
 ---
 
-## Configured Chats
-
-| Alias | Name | Chat ID | Description |
-|-------|------|---------|-------------|
-| `default` | Bargain Deals | -5002446964 | Marketplace deals and bargain alerts |
-| `bargains` | Bargain Deals | -5002446964 | Marketplace deals and bargain alerts |
-| `house` | House Common | -4972420459 | House common telegram group |
-
----
-
 ## Verify Setup
 
 ### Check bot is working
@@ -173,7 +163,7 @@ curl -s "https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates" | jq '.result[] | 
 ```
 
 ### 4. Store bot token in .env
-Add to `/Users/benjaminshafii/digital-empire/.env`:
+Add to `.env`:
 ```bash
 TELEGRAM_BOT_TOKEN=your_token_here
 TELEGRAM_CHAT_ID=your_default_chat_id_here
