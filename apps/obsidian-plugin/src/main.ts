@@ -11,9 +11,7 @@ import { DEFAULT_SETTINGS } from "./types";
 import { SyncService } from "./services/sync";
 import { WebsiteSyncSettingTab } from "./ui/settings-tab";
 import { SyncStatusView, SYNC_VIEW_TYPE } from "./ui/sync-view";
-import { CollabNoteView, COLLAB_VIEW_TYPE } from "./ui/collab-view";
 import { StatusBarManager } from "./ui/status-bar";
-import { buildCollabSnapshotPath } from "./services/collab-export";
 import { generateSlug } from "./services/transformer";
 
 export default class WebsiteSyncPlugin extends Plugin {

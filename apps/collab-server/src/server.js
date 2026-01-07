@@ -36,6 +36,13 @@ export function deriveRoomName(requestUrl) {
   }
 }
 
+function setCors(res) {
+  // Obsidian runs on app://obsidian.md, so we need explicit CORS.
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
 class Room {
   constructor(name) {
     this.name = name;
@@ -174,61 +181,100 @@ class Room {
   }
 }
 
-const rooms = new Map();
+export function createCollabServer({ host = "127.0.0.1", port = 1234 } = {}) {
+  const rooms = new Map();
 
-function getRoom(name) {
-  let room = rooms.get(name);
-  if (!room) {
-    room = new Room(name);
-    rooms.set(name, room);
+  function getRoom(name) {
+    let room = rooms.get(name);
+    if (!room) {
+      room = new Room(name);
+      rooms.set(name, room);
+    }
+    return room;
   }
-  return room;
+
+  const server = http.createServer((req, res) => {
+    setCors(res);
+
+    if (!req.url) {
+      res.writeHead(404);
+      res.end();
+      return;
+    }
+
+    if (req.method === "OPTIONS") {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    if (req.method !== "GET") {
+      res.writeHead(404);
+      res.end();
+      return;
+    }
+
+    if (req.url === "/healthz") {
+      res.writeHead(200, { "Content-Type": "text/plain" });
+      res.end("ok");
+      return;
+    }
+
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("yjs-collab-server\n");
+  });
+
+  const wss = new WebSocketServer({ server });
+
+  wss.on("connection", (ws, req) => {
+    const roomName = deriveRoomName(req.url ?? "/");
+    const room = getRoom(roomName);
+    room.addConn(ws);
+
+    ws.on("message", (data) => {
+      const message = data instanceof Buffer ? new Uint8Array(data) : new Uint8Array(data);
+      room.handleMessage(ws, message);
+    });
+
+    ws.on("close", () => {
+      room.removeConn(ws);
+      if (room.conns.size === 0) {
+        rooms.delete(roomName);
+        room.destroy();
+      }
+    });
+
+    room.sendSyncStep1(ws);
+    room.sendAwarenessStates(ws);
+  });
+
+  return {
+    server,
+    wss,
+    host,
+    port,
+    async listen() {
+      await new Promise((resolve) => {
+        server.listen(port, host, resolve);
+      });
+
+      const address = server.address();
+      const resolvedPort = typeof address === "object" && address ? address.port : port;
+      return { host, port: resolvedPort };
+    },
+    async close() {
+      wss.close();
+      await new Promise((resolve) => server.close(resolve));
+    },
+  };
 }
 
-const host = readEnvString("HOST", "127.0.0.1");
-const port = readEnvNumber("PORT", 1234);
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const host = readEnvString("HOST", "127.0.0.1");
+  const port = readEnvNumber("PORT", 1234);
 
-const server = http.createServer((req, res) => {
-  if (!req.url || req.method !== "GET") {
-    res.writeHead(404);
-    res.end();
-    return;
-  }
-
-  if (req.url === "/healthz") {
-    res.writeHead(200, { "Content-Type": "text/plain" });
-    res.end("ok");
-    return;
-  }
-
-  res.writeHead(200, { "Content-Type": "text/plain" });
-  res.end("yjs-collab-server\n");
-});
-
-const wss = new WebSocketServer({ server });
-
-wss.on("connection", (ws, req) => {
-  const roomName = deriveRoomName(req.url ?? "/");
-  const room = getRoom(roomName);
-  room.addConn(ws);
-
-  ws.on("message", (data) => {
-    const message = data instanceof Buffer ? new Uint8Array(data) : new Uint8Array(data);
-    room.handleMessage(ws, message);
+  const app = createCollabServer({ host, port });
+  app.listen().then(({ host: boundHost, port: boundPort }) => {
+    console.log(`[collab-server] listening on http://${boundHost}:${boundPort}`);
   });
-
-  ws.on("close", () => {
-    room.removeConn(ws);
-    if (room.conns.size === 0) {
-      rooms.delete(roomName);
-      room.destroy();
-    }
-  });
-
-  room.sendSyncStep1(ws);
-  room.sendAwarenessStates(ws);
-});
-
-server.listen(port, host, () => {
-  console.log(`[collab-server] listening on http://${host}:${port}`);
-});
+}
