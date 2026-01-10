@@ -1,6 +1,6 @@
 ---
 name: qbittorrent
-description: Setup qBittorrent Web UI access for adding and managing torrents
+description: Manage qBittorrent Web UI end-to-end (add, monitor, control torrents)
 ---
 
 ## Credential Check
@@ -25,7 +25,30 @@ QB_PASS=your-password
 
 ---
 
+## Torrent Sources (Vanilla)
+
+The tracked, portable template is `.opencode/skill/qbittorrent/torrent-sources.example.json`.
+
+During setup, copy it to `.opencode/skill/qbittorrent/torrent-sources.json` (gitignored) and customize it for your environment:
+```bash
+cp .opencode/skill/qbittorrent/torrent-sources.example.json .opencode/skill/qbittorrent/torrent-sources.json
+```
+
+List the configured sources:
+```bash
+jq -r '.sources[] | "\(.name)\t\(.url)\(.searchPath)"' .opencode/skill/qbittorrent/torrent-sources.json
+```
+
+---
+
 ## Quick Usage
+
+### End-to-end flow
+
+1. Pick a source from `.opencode/skill/qbittorrent/torrent-sources.json` (create it from the example if missing) and grab a magnet link or `.torrent` file from the official page.
+2. Login to the Web API (stores a `SID` cookie in `/tmp/qb.txt`).
+3. Add the torrent (magnet or `.torrent`).
+4. Monitor progress/state until complete.
 
 ### Login and store session
 ```bash
@@ -40,6 +63,13 @@ source .env && curl -s -c /tmp/qb.txt -b /tmp/qb.txt \
 curl -s -c /tmp/qb.txt -b /tmp/qb.txt \
   "$QB_URL/api/v2/torrents/add" \
   -F "urls=magnet:?xt=urn:btih:HASH&dn=NAME"
+```
+
+### Add a .torrent file
+```bash
+curl -s -c /tmp/qb.txt -b /tmp/qb.txt \
+  "$QB_URL/api/v2/torrents/add" \
+  -F "torrents=@/path/to/file.torrent"
 ```
 
 **Response meanings:**
@@ -64,6 +94,17 @@ curl -s -b /tmp/qb.txt "$QB_URL/api/v2/torrents/info"
 ```bash
 curl -s -b /tmp/qb.txt "$QB_URL/api/v2/torrents/info?hashes=HASH_LOWERCASE"
 ```
+
+### Latest torrent + completion
+```bash
+curl -s -b /tmp/qb.txt "$QB_URL/api/v2/torrents/info" | jq -r '
+  if length==0 then "No torrents"
+  else (sort_by(.added_on) | last) as $t
+  | "name=\($t.name)\nhash=\($t.hash)\nstate=\($t.state)\nprogress=\($t.progress)\nadded_on=\($t.added_on)\ncompletion_on=\($t.completion_on)\nsave_path=\($t.save_path)"
+  end'
+```
+
+Rule of thumb: a torrent is finished when `progress` is `1` and `state` is `uploading`/`stoppedUP`/`pausedUP`.
 
 ---
 
@@ -93,6 +134,7 @@ curl -s -b /tmp/qb.txt "$QB_URL/api/v2/torrents/add" -F "urls=MAGNET_LINK_HERE"
 
 - **Must use `-F` not `-d`** for adding torrents (multipart/form-data required)
 - `Fails.` response = duplicate torrent, not an error
+- Some endpoints (including `/api/v2/app/version`) may return `403 Forbidden` until you authenticate and send the `SID` cookie
 - Session cookie stored in `/tmp/qb.txt` - re-login if expired
 - Hash must be lowercase when querying
 
@@ -133,6 +175,11 @@ curl -s -b /tmp/qb.txt -X POST "$QB_URL/api/v2/torrents/delete" \
 1. **Web UI URL** - Default is `http://localhost:8080`
 2. **Username** - Default is `admin`
 3. **Password** - Set in qBittorrent preferences
+4. **Torrent sources config** - Copy the example to a local config (gitignored)
+
+```bash
+cp .opencode/skill/qbittorrent/torrent-sources.example.json .opencode/skill/qbittorrent/torrent-sources.json
+```
 
 ### Step 1: Enable Web UI in qBittorrent
 
@@ -156,8 +203,10 @@ EOF
 
 ### Step 3: Test it works
 ```bash
-source .env && curl -s "$QB_URL/api/v2/app/version"
-# Should return version like "v5.1.2"
+source .env && \
+curl -s -c /tmp/qb.txt "$QB_URL/api/v2/auth/login" -d "username=$QB_USER&password=$QB_PASS" >/dev/null && \
+curl -s -b /tmp/qb.txt "$QB_URL/api/v2/app/version"
+# Should return version like "v5.1.2" (some setups return 403 until authenticated)
 ```
 
 ---

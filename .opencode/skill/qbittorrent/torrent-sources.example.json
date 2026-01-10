@@ -1,66 +1,45 @@
 {
   "sources": [
     {
-      "name": "nyaa",
-      "url": "https://nyaa.si",
-      "type": "anime",
-      "searchPath": "/?f=0&c=0_0&q=",
-      "description": "Anime, manga, games, music from Japan"
+      "name": "ubuntu-releases",
+      "url": "https://releases.ubuntu.com",
+      "type": "linux-iso",
+      "searchPath": "/",
+      "description": "Official Ubuntu releases (torrent links on release pages)"
     },
     {
-      "name": "1337x",
-      "url": "https://1337x.to",
-      "type": "general",
-      "searchPath": "/search/",
-      "description": "General torrents - movies, TV, games, software"
+      "name": "debian-cd",
+      "url": "https://www.debian.org",
+      "type": "linux-iso",
+      "searchPath": "/CD/torrent-cd/",
+      "description": "Official Debian CD/DVD torrent links"
     },
     {
-      "name": "rarbg-index",
-      "url": "https://rargb.to",
-      "type": "general",
-      "searchPath": "/search/?search=",
-      "description": "Movies, TV shows, games (RARBG successor)"
+      "name": "fedora",
+      "url": "https://torrent.fedoraproject.org",
+      "type": "linux-iso",
+      "searchPath": "/",
+      "description": "Official Fedora torrent directory"
     },
     {
-      "name": "rutracker",
-      "url": "https://rutracker.org",
-      "type": "general",
-      "searchPath": "/forum/tracker.php?nm=",
-      "description": "Russian tracker - music, software, games"
+      "name": "archlinux",
+      "url": "https://archlinux.org",
+      "type": "linux-iso",
+      "searchPath": "/downloads/",
+      "description": "Official Arch Linux downloads (torrent)"
     },
     {
-      "name": "fitgirl",
-      "url": "https://fitgirl-repacks.site",
-      "type": "games",
-      "searchPath": "/?s=",
-      "description": "Compressed game repacks"
-    },
-    {
-      "name": "eztv",
-      "url": "https://eztvx.to",
-      "type": "tv",
-      "searchPath": "/search/",
-      "description": "TV shows only"
-    },
-    {
-      "name": "yts",
-      "url": "https://yts.mx",
-      "type": "movies",
-      "searchPath": "/browse-movies/",
-      "description": "Movies only - small file sizes"
-    },
-    {
-      "name": "torrentgalaxy",
-      "url": "https://torrentgalaxy.to",
-      "type": "general",
-      "searchPath": "/torrents.php?search=",
-      "description": "General torrents with good UI"
+      "name": "freebsd",
+      "url": "https://download.freebsd.org",
+      "type": "bsd-iso",
+      "searchPath": "/ftp/releases/ISO-IMAGES/",
+      "description": "FreeBSD ISO images (includes torrent files in release dirs)"
     }
   ],
   "preferences": {
-    "defaultSource": "nyaa",
-    "preferredQuality": "1080p",
-    "excludeKeywords": ["cam", "hdts", "telesync"],
+    "defaultSource": "ubuntu-releases",
+    "preferredQuality": null,
+    "excludeKeywords": [],
     "includeKeywords": []
   }
 }
