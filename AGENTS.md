@@ -35,6 +35,24 @@ Running long-lived tasks on equivalent remote servers is ~8-10x more expensive o
 
 8. **Graceful degradation** - If credentials or permissions are missing, the system guides the user to obtain them.
 
+## Repository Guidance
+
+- Always read `design-prd.md` at session start for product intent and examples.
+- Every package/app must have its own `AGENTS.md` with local rules and workflows.
+- The root `AGENTS.md` documents this structure and is the global baseline; local `AGENTS.md` can extend or override.
+- `AGENTS.md` files are the canonical source of agent behavior.
+
+## Always-On Summary
+
+- Repo is OpenCode and can inspect itself.
+- Skills are the primary path to self-improvement.
+- Prefer atomic tools and prompt-driven workflows.
+- Parity: agent can do any UI action.
+- Graceful degradation: ask for missing access.
+- Credentials live in Bitwarden/env/OS keychain.
+- Multi-user, credentialed profiles per family member.
+- Prefer standards and existing tools.
+
 ---
 
 ## Constraints
