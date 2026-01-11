@@ -5,7 +5,7 @@ description: Find local marketplace bargains via browser tools and send top deal
 
 ## Overview
 
-Use this skill to find the best local bargains on Facebook Marketplace and Craigslist with the browser tools only. The goal is a short list of **top 3–5 deals** with a one-line explanation of why each is a great bargain.
+Use this skill to find the best local bargains on Facebook Marketplace and Craigslist with the browser tools only. The goal is a short list of **top 3–5 deals** with a mini-report per deal explaining why it is a great bargain.
 
 Default search center: **957 Hayes St, San Francisco, CA (94117)**.
 
@@ -66,7 +66,7 @@ Exclude listings that contain the default broken keywords.
 
 ### 5) Send Telegram summary
 
-Send a concise list with a one-line rationale per item.
+Send a concise report with 2–4 lines per item, capturing the price, distance, condition signals, and why it is a great bargain.
 
 ## Telegram Output Format
 
@@ -74,12 +74,16 @@ Use Markdown:
 
 ```
 *Daily Bargains (SF 957 Hayes St)*
+
 1) $120 — Yamaha receiver + speakers (0.8 mi) [FB link]
-   Why: 0.8 mi and ~50% below similar listings; clean photos.
+   Why it’s a deal: ~50% below typical; clean photos, complete set.
+   Condition: described as “like new,” no damage language.
+   Notes: pickup today, seller says “must go.”
+
 2) $80 — Solid wood coffee table (2.2 mi) [CL link]
-   Why: close and below typical price; “moving” urgency.
-3) $60 — Philips Hue starter kit (4.6 mi) [FB link]
-   Why: far but insanely cheap vs typical; looks clean.
+   Why it’s a deal: price below similar listings nearby.
+   Condition: solid wood, minor scuffs only.
+   Notes: moving sale, quick pickup.
 ```
 
 ## Daily Scheduler Prompt Template
@@ -92,7 +96,7 @@ schedule: "0 9 * * *"
 @bargain-finder
 Find top 3–5 deals near 957 Hayes St, San Francisco. Use browser tools only.
 Search Facebook Marketplace and Craigslist for: <items list>.
-Apply distance rule (1–3–5 miles), exclude broken listings, and explain why each deal is great.
+Apply distance rule (1–3–5 miles), exclude broken listings, and send a short report per deal with why it is great.
 Send results via Telegram.
 ```
 

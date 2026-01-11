@@ -42,6 +42,31 @@ Running long-lived tasks on equivalent remote servers is ~8-10x more expensive o
 - The root `AGENTS.md` documents this structure and is the global baseline; local `AGENTS.md` can extend or override.
 - `AGENTS.md` files are the canonical source of agent behavior.
 
+## Skill Template (Self-Building)
+
+When adding a new skill, use a self-building scaffold in `.opencode/skill/<skill>/` with flat, atomic TypeScript scripts (no `src/` folder). The skill should construct what it needs on first use and keep secrets out of git.
+
+**Required files (flat layout)**
+- `SKILL.md` — capability + usage + API links.
+- `openapi.json` — optional, include when an API spec exists.
+- `.env.example` — tracked, documents required keys.
+- `.env` — ignored, contains real credentials.
+- `load-env.ts` — validates required env vars and exports config.
+- `client.ts` — shared request helper (fetch wrapper, headers, errors).
+- `first-call.ts` — minimal API call to verify access.
+
+**Self-build steps**
+1. Load and validate credentials in `load-env.ts` (if missing, instruct user to add `.env`).
+2. Run `first-call.ts` to confirm access before deeper flows.
+
+**Execution**
+- Default runtime: `bun` (e.g., `bun load-env.ts`, `bun first-call.ts`).
+- Scripts are composable: each file should be a small, reusable unit with clear exports.
+
+**Git hygiene**
+- Never commit secrets; only `.env.example` is tracked.
+- Skill folders are tracked; sensitive data stays in `.env`.
+
 ## Always-On Summary
 
 - Repo is OpenCode and can inspect itself.
