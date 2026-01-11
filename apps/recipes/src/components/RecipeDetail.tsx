@@ -29,6 +29,7 @@ const buildStepKey = (componentIndex: number, stepIndex: number): string => {
 export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
   const [batchMultiplier, setBatchMultiplier] = useState(1);
   const [ingredientOverrides, setIngredientOverrides] = useState<IngredientOverrideMap>({});
+  const [lastEditedKey, setLastEditedKey] = useState<string | null>(null);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<string>>(new Set());
   const [checkedSteps, setCheckedSteps] = useState<Set<string>>(new Set());
 
@@ -36,34 +37,26 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
 
   const componentViews = useMemo<ComponentView[]>(() => {
     const baseAmounts: Record<string, number> = {};
-    let baseTotal = 0;
 
     recipe.components.forEach((component, componentIndex) => {
       component.ingredients.forEach((ingredient) => {
         const key = buildIngredientKey(componentIndex, ingredient.id);
-        const baseAmount = ingredient.amount * batchMultiplier;
-        baseAmounts[key] = baseAmount;
-        baseTotal += baseAmount;
+        baseAmounts[key] = ingredient.amount * batchMultiplier;
       });
     });
 
-    const overrideEntries = Object.entries(ingredientOverrides);
-    const overrideTotal = overrideEntries.reduce(
-      (total, [, amount]) => total + amount,
-      0
-    );
-    const baseOverrideTotal = overrideEntries.reduce(
-      (total, [key]) => total + (baseAmounts[key] ?? 0),
-      0
-    );
-    const hasOverrides = overrideEntries.length > 0;
-    const remainingBaseTotal = baseTotal - baseOverrideTotal;
-    const remainingTargetTotal = targetTotalGrams - overrideTotal;
-    const rawRatio =
-      hasOverrides && remainingBaseTotal > 0
-        ? remainingTargetTotal / remainingBaseTotal
-        : 1;
-    const ratio = Number.isFinite(rawRatio) ? Math.max(rawRatio, 0) : 1;
+    let ratio = 1;
+    if (lastEditedKey) {
+      const baseAmount = baseAmounts[lastEditedKey];
+      const overrideAmount = ingredientOverrides[lastEditedKey];
+      if (typeof baseAmount === "number" && typeof overrideAmount === "number" && baseAmount > 0) {
+        ratio = overrideAmount / baseAmount;
+      }
+    }
+
+    if (!Number.isFinite(ratio) || ratio <= 0) {
+      ratio = 1;
+    }
 
     return recipe.components.map((component, componentIndex) => {
       const scaledIngredients = component.ingredients.map((ingredient) => {
@@ -95,7 +88,7 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
         targetGrams,
       };
     });
-  }, [recipe.components, ingredientOverrides, batchMultiplier, targetTotalGrams]);
+  }, [recipe.components, ingredientOverrides, batchMultiplier, lastEditedKey]);
 
   const currentTotalGrams = useMemo(() => {
     return componentViews.reduce((total, component) => total + component.totalGrams, 0);
@@ -149,6 +142,11 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
         setIngredientOverrides((prev) => {
           const next = { ...prev };
           delete next[key];
+          const remainingKeys = Object.keys(next);
+          setLastEditedKey((current) => {
+            if (current !== key) return current;
+            return remainingKeys.length > 0 ? remainingKeys[0] : null;
+          });
           return next;
         });
         return;
@@ -163,6 +161,7 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
         ...prev,
         [key]: parsed,
       }));
+      setLastEditedKey(key);
     },
     []
   );
