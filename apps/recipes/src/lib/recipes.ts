@@ -1,33 +1,31 @@
-import matter from 'gray-matter';
-import { marked } from 'marked';
-import type { Recipe, RecipeFrontMatter } from './types';
+import matter from "gray-matter";
+import { marked } from "marked";
+import type { Recipe, RecipeFrontMatter } from "./types";
 
 // Import all markdown files from content/recipes at build time
-const recipeFiles = import.meta.glob<string>('../../content/recipes/*.md', {
-  query: '?raw',
-  import: 'default',
+const recipeFiles = import.meta.glob("../../content/recipes/*.md", {
+  query: "?raw",
+  import: "default",
   eager: true,
-});
+}) as Record<string, string>;
 
 function parseRecipe(rawContent: string, filename: string): Recipe {
   const { data, content } = matter(rawContent);
   const frontMatter = data as RecipeFrontMatter;
-  
+
   // Generate slug from filename if not in frontmatter
   if (!frontMatter.slug) {
-    frontMatter.slug = filename
-      .replace(/^.*\//, '')
-      .replace(/\.md$/, '');
+    frontMatter.slug = filename.replace(/^.*\//, "").replace(/\.md$/, "");
   }
-  
+
   // Ensure required fields have defaults
   if (!frontMatter.tags) frontMatter.tags = [];
   if (!frontMatter.ingredients) frontMatter.ingredients = [];
-  if (!frontMatter.yield) frontMatter.yield = { amount: 1, unit: 'serving' };
-  
+  if (!frontMatter.yield) frontMatter.yield = { amount: 1, unit: "serving" };
+
   // Parse markdown content to HTML
   const htmlContent = marked.parse(content, { async: false }) as string;
-  
+
   return {
     ...frontMatter,
     content: htmlContent,
@@ -42,8 +40,8 @@ const recipes: Recipe[] = Object.entries(recipeFiles).map(([path, content]) => {
 
 // Sort by updatedAt or createdAt, most recent first
 recipes.sort((a, b) => {
-  const dateA = a.updatedAt || a.createdAt || '1970-01-01';
-  const dateB = b.updatedAt || b.createdAt || '1970-01-01';
+  const dateA = a.updatedAt || a.createdAt || "1970-01-01";
+  const dateB = b.updatedAt || b.createdAt || "1970-01-01";
   return dateB.localeCompare(dateA);
 });
 

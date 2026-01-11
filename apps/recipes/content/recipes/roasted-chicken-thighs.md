@@ -63,7 +63,7 @@ author: Family
 
 4. **Prep aromatics** (while oven heats) - Smash **20g garlic** cloves with the flat of a knife. Halve **60g lemon**.
 
-5. **Arrange pan** - Place chicken skin-side up in baking dish. Scatter **20g smashed garlic**, **5g rosemary**, and **60g lemon halves** around thighs.
+5. **Arrange pan** - Place chicken skin-side up in baking dish. Scatter **20g garlic**, **5g rosemary**, and **60g lemon** around thighs.
 
 6. **Roast** - Bake at 425°F for 35-40 min until skin is golden and crispy, internal temp reaches 165°F.
 

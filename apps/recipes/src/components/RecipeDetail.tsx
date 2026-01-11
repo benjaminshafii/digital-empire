@@ -1,6 +1,6 @@
-import { useState, useMemo, useCallback } from 'react';
-import type { Recipe, Ingredient, ScaledIngredient } from '../lib/types';
-import { scaleIngredient, formatAmount, formatTime } from '../lib/types';
+import { useState, useMemo, useCallback } from "react";
+import type { Recipe, ScaledIngredient } from "../lib/types";
+import { scaleIngredient, formatAmount, formatTime } from "../lib/types";
 
 interface RecipeDetailProps {
   recipe: Recipe;
@@ -67,10 +67,10 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
     scaledIngredients.forEach((ing) => {
       // Match patterns like **22g lemon juice** or **0.5g lemon zest**
       const patterns = [
-        new RegExp(`\\*\\*${ing.amount}${ing.unit}\\s+${ing.name}\\*\\*`, 'gi'),
-        new RegExp(`\\*\\*${ing.amount}\\s*${ing.unit}\\s+${ing.name}\\*\\*`, 'gi'),
-        new RegExp(`<strong>${ing.amount}${ing.unit}\\s+${ing.name}</strong>`, 'gi'),
-        new RegExp(`<strong>${ing.amount}\\s*${ing.unit}\\s+${ing.name}</strong>`, 'gi'),
+        new RegExp(`\\*\\*${ing.amount}${ing.unit}\\s+${ing.name}\\*\\*`, "gi"),
+        new RegExp(`\\*\\*${ing.amount}\\s*${ing.unit}\\s+${ing.name}\\*\\*`, "gi"),
+        new RegExp(`<strong>${ing.amount}${ing.unit}\\s+${ing.name}</strong>`, "gi"),
+        new RegExp(`<strong>${ing.amount}\\s*${ing.unit}\\s+${ing.name}</strong>`, "gi"),
       ];
       patterns.forEach((pattern) => {
         result = result.replace(
@@ -154,7 +154,7 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
       {/* Servings scaler */}
       <div className="bg-ink/5 p-4 mb-8 flex items-center gap-4">
         <span className="font-mono text-sm text-ink-muted uppercase tracking-wide">
-          {baseScaleKey || 'Servings'}:
+          {baseScaleKey || "Servings"}:
         </span>
         <input
           type="number"
@@ -192,16 +192,16 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
                 key={ing.id}
                 onClick={() => toggleIngredient(ing.id)}
                 className={`ingredient-row w-full text-left px-4 cursor-pointer hover:bg-ink/5 ${
-                  checkedIngredients.has(ing.id) ? 'checked' : ''
+                  checkedIngredients.has(ing.id) ? "checked" : ""
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <span
                     className={`w-4 h-4 border border-ink/30 flex items-center justify-center text-xs ${
-                      checkedIngredients.has(ing.id) ? 'bg-accent text-white border-accent' : ''
+                      checkedIngredients.has(ing.id) ? "bg-accent text-white border-accent" : ""
                     }`}
                   >
-                    {checkedIngredients.has(ing.id) && '✓'}
+                    {checkedIngredients.has(ing.id) && "✓"}
                   </span>
                   <span className="ingredient-name">
                     {ing.name}
@@ -232,7 +232,7 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
                 key={index}
                 onClick={() => toggleStep(index)}
                 className={`step-item w-full text-left cursor-pointer ${
-                  checkedSteps.has(index) ? 'checked' : ''
+                  checkedSteps.has(index) ? "checked" : ""
                 }`}
                 data-step={index + 1}
               >

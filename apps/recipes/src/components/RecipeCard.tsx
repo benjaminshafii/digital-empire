@@ -1,5 +1,5 @@
-import type { Recipe } from '../lib/types';
-import { formatTime } from '../lib/types';
+import type { Recipe } from "../lib/types";
+import { formatTime } from "../lib/types";
 
 interface RecipeCardProps {
   recipe: Recipe;

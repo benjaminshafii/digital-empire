@@ -65,11 +65,11 @@ author: Family
 
 1. **Preheat oven** - Set to 375°F.
 
-2. **Cream butter and sugars** - Beat **225g softened butter**, **150g sugar**, and **165g brown sugar** until light and fluffy, about 3 min.
+2. **Cream butter and sugars** - Beat **225g butter** (softened), **150g sugar**, and **165g brown sugar** until light and fluffy, about 3 min.
 
-3. **Add wet ingredients** - Beat in **2 eggs** one at a time. Add **10ml vanilla**, mix until combined.
+3. **Add wet ingredients** - Beat in **2 eggs** one at a time. Add **10ml vanilla extract**, mix until combined.
 
-4. **Mix dry ingredients** - In separate bowl, whisk **280g flour**, **5g baking soda**, and **5g salt**.
+4. **Mix dry ingredients** - In separate bowl, whisk **280g all-purpose flour**, **5g baking soda**, and **5g salt**.
 
 5. **Combine** - Add dry ingredients to wet, mix on low until just combined. Don't overmix.
 

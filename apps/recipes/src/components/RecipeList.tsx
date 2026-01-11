@@ -1,16 +1,15 @@
-import { useState, useMemo } from 'react';
-import type { Recipe } from '../lib/types';
-import { getRecipes, getAllTags } from '../lib/recipes';
-import { filterAndSearch } from '../lib/search';
-import { RecipeCard } from './RecipeCard';
+import { useState, useMemo } from "react";
+import { getRecipes, getAllTags } from "../lib/recipes";
+import { filterAndSearch } from "../lib/search";
+import { RecipeCard } from "./RecipeCard";
 
 interface RecipeListProps {
   onSelectRecipe: (slug: string) => void;
 }
 
 export function RecipeList({ onSelectRecipe }: RecipeListProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTag, setSelectedTag] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTag, setSelectedTag] = useState<string>("");
 
   const allTags = useMemo(() => getAllTags(), []);
   
@@ -45,9 +44,9 @@ export function RecipeList({ onSelectRecipe }: RecipeListProps) {
       {allTags.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-8">
           <button
-            onClick={() => setSelectedTag('')}
+            onClick={() => setSelectedTag("")}
             className={`tag cursor-pointer transition-colors ${
-              !selectedTag ? 'bg-ink text-white' : 'hover:bg-ink/10'
+              !selectedTag ? "bg-ink text-white" : "hover:bg-ink/10"
             }`}
           >
             All
@@ -55,9 +54,9 @@ export function RecipeList({ onSelectRecipe }: RecipeListProps) {
           {allTags.map((tag) => (
             <button
               key={tag}
-              onClick={() => setSelectedTag(tag === selectedTag ? '' : tag)}
+              onClick={() => setSelectedTag(tag === selectedTag ? "" : tag)}
               className={`tag cursor-pointer transition-colors ${
-                tag === selectedTag ? 'bg-ink text-white' : 'hover:bg-ink/10'
+                tag === selectedTag ? "bg-ink text-white" : "hover:bg-ink/10"
               }`}
             >
               {tag}

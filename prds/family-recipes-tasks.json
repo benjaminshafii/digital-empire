@@ -2,15 +2,15 @@
   "project": "Family Recipes App",
   "prd_path": "prds/family-recipes-prd.md",
   "created": "2025-01-07",
-  "updated": "2025-01-07T11:35:00Z",
+  "updated": "2025-01-07T11:46:00Z",
   "progress": {
     "total": 14,
-    "completed": 10,
-    "in_progress": 1,
-    "pending": 3,
+    "completed": 14,
+    "in_progress": 0,
+    "pending": 0,
     "blocked": 0
   },
-  "current_task": "4.1",
+  "current_task": null,
   "tasks": [
     {
       "id": "1.1",
@@ -152,9 +152,9 @@
       "size": "M",
       "dependencies": ["1.4"],
       "verification": "Skill file exists with proper format",
-      "status": "in_progress",
-      "started_at": "2025-01-07T11:35:00Z",
-      "notes": ""
+      "status": "completed",
+      "completed_at": "2025-01-07T11:37:00Z",
+      "notes": "Added recipes skill doc with format rules, validation checklist, and examples"
     },
     {
       "id": "4.2",
@@ -164,8 +164,9 @@
       "size": "S",
       "dependencies": ["4.1", "2.2"],
       "verification": "Sample recipes load and display correctly",
-      "status": "pending",
-      "notes": ""
+      "status": "completed",
+      "completed_at": "2025-01-07T11:38:00Z",
+      "notes": "Added garlic butter pasta, roasted chicken thighs, and chocolate chip cookies recipes"
     },
     {
       "id": "5.1",
@@ -175,8 +176,9 @@
       "size": "S",
       "dependencies": ["3.4", "4.2"],
       "verification": "pnpm build succeeds, pnpm preview shows working site",
-      "status": "pending",
-      "notes": ""
+      "status": "completed",
+      "completed_at": "2025-01-07T11:46:00Z",
+      "notes": "pnpm build succeeded; only warning was gray-matter eval usage in dependency"
     }
   ]
 }

@@ -1,19 +1,19 @@
-import { useState, useEffect } from 'react';
-import { RecipeList } from './components/RecipeList';
-import { RecipeDetail } from './components/RecipeDetail';
-import { getRecipeBySlug } from './lib/recipes';
+import { useState, useEffect } from "react";
+import { RecipeList } from "./components/RecipeList";
+import { RecipeDetail } from "./components/RecipeDetail";
+import { getRecipeBySlug } from "./lib/recipes";
 
 type Route = 
-  | { type: 'list' }
-  | { type: 'recipe'; slug: string };
+  | { type: "list" }
+  | { type: "recipe"; slug: string };
 
 function parseHash(): Route {
   const hash = window.location.hash.slice(1); // Remove #
-  if (hash.startsWith('/recipe/')) {
-    const slug = hash.replace('/recipe/', '');
-    return { type: 'recipe', slug };
+  if (hash.startsWith("/recipe/")) {
+    const slug = hash.replace("/recipe/", "");
+    return { type: "recipe", slug };
   }
-  return { type: 'list' };
+  return { type: "list" };
 }
 
 export default function App() {
@@ -24,8 +24,8 @@ export default function App() {
     const handleHashChange = () => {
       setRoute(parseHash());
     };
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
   // Navigate to recipe
@@ -35,11 +35,11 @@ export default function App() {
 
   // Navigate back to list
   const navigateToList = () => {
-    window.location.hash = '';
+    window.location.hash = "";
   };
 
   // Render based on route
-  if (route.type === 'recipe') {
+  if (route.type === "recipe") {
     const recipe = getRecipeBySlug(route.slug);
     if (!recipe) {
       return (
