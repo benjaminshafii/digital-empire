@@ -6,11 +6,7 @@ settings:
 
 importers:
 
-  .:
-    dependencies:
-      '@different-ai/opencode-browser':
-        specifier: ^2.0.0
-        version: 2.0.1(@opencode-ai/plugin@1.0.200)
+  .: {}
 
   apps/blog:
     dependencies:
@@ -54,22 +50,6 @@ importers:
       yjs:
         specifier: ^13.6.29
         version: 13.6.29
-
-  apps/marketplace-tracker-v2:
-    dependencies:
-      '@opencode-ai/plugin':
-        specifier: 1.0.200
-        version: 1.0.200
-      hono:
-        specifier: ^4.0.0
-        version: 4.11.1
-    devDependencies:
-      '@types/bun':
-        specifier: latest
-        version: 1.3.5
-      typescript:
-        specifier: ^5.8.0
-        version: 5.9.3
 
   apps/obsidian-collab:
     dependencies:
@@ -436,12 +416,6 @@ packages:
 
   '@codemirror/view@6.39.8':
     resolution: {integrity: sha512-1rASYd9Z/mE3tkbC9wInRlCNyCkSn+nLsiQKZhEDUUJiUfs/5FHDpCUDaQpoTIaNGeDc6/bhaEAyLmeEucEFPw==}
-
-  '@different-ai/opencode-browser@2.0.1':
-    resolution: {integrity: sha512-7auuHJicRRZYADaD5MTR7gzEQOYgUUOJZfjBMWm3DXxPW85rNCo9IraLQsG+BnYZZX+TeUQx64L19zyaFJ7kJQ==}
-    hasBin: true
-    peerDependencies:
-      '@opencode-ai/plugin': '*'
 
   '@dimforge/rapier3d-compat@0.12.0':
     resolution: {integrity: sha512-uekIGetywIgopfD97oDL5PfeezkFpNhwlzlaEYNOA0N6ghdsOvh/HYjSMek5Q2O1PYvRSDFcqFVJl4r4ZBwOow==}
@@ -1310,12 +1284,6 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
-  '@opencode-ai/plugin@1.0.200':
-    resolution: {integrity: sha512-1qVeR6II8/DJI/Xp01TW59YjANyPf74//V2+kHUThQ7fIRVVTZJRDj82HjFyjUSOEA1FRcQ7tCGl1zD5X2P/aQ==}
-
-  '@opencode-ai/sdk@1.0.200':
-    resolution: {integrity: sha512-dwGsm0V7cJpYglcn6ChrcftCHzDBq/TZFC1qne4zym9jy5r4I1osCjlmZf5935ZriOQtUAdCP3s+wVcOERHBdA==}
-
   '@oslojs/encoding@1.1.0':
     resolution: {integrity: sha512-70wQhgYmndg4GCPxPPxPGevRKqTIJ2Nh4OkiMWmDAVYsTQ+Ta7Sq+rPevXyXGdzr30/qZBnyOalCszoMxlyldQ==}
 
@@ -1554,9 +1522,6 @@ packages:
 
   '@types/babel__traverse@7.28.0':
     resolution: {integrity: sha512-8PvcXf70gTDZBgt9ptxJ8elBeBjcLOAcOtoO/mPJjtji1+CdGbHgm77om1GrsPxsiE+uXIpNSK64UYaIwQXd4Q==}
-
-  '@types/bun@1.3.5':
-    resolution: {integrity: sha512-RnygCqNrd3srIPEWBd5LFeUYG7plCoH2Yw9WaZGyNmdTEei+gWaHqydbaIRkIkcbXwhBT94q78QljxN0Sk838w==}
 
   '@types/codemirror@5.60.8':
     resolution: {integrity: sha512-VjFgDF/eB+Aklcy15TtOTLQeMjTo07k7KAjql8OK5Dirr7a6sJY4T1uVBDuTVG9VEmn1uUsohOpYnVfgC6/jyw==}
@@ -1943,9 +1908,6 @@ packages:
   builtin-modules@3.3.0:
     resolution: {integrity: sha512-zhaCDicdLuWN5UbN5IMnFqNMhNfo919sH85y2/ea+5Yg9TsTkeZxpL+JLbp6cgYFS4sRLp3YV4S6yDuqVWHYOw==}
     engines: {node: '>=6'}
-
-  bun-types@1.3.5:
-    resolution: {integrity: sha512-inmAYe2PFLs0SUbFOWSVD24sg1jFlMPxOjOSSCYqUgn4Hsc3rDc7dFvfVYjFPNHtov6kgUeulV4SxbuIV/stPw==}
 
   cac@6.7.14:
     resolution: {integrity: sha512-b6Ilus+c3RrdDk+JhLKUAQfzzgLEPy6wcXqS7f/xe1EETvsDP6GORG7SFuOs6cID5YkqchW/LXZbX5bc8j7ZcQ==}
@@ -2538,10 +2500,6 @@ packages:
 
   hls.js@1.6.15:
     resolution: {integrity: sha512-E3a5VwgXimGHwpRGV+WxRTKeSp2DW5DI5MWv34ulL3t5UNmyJWCQ1KmLEHbYzcfThfXG8amBL+fCYPneGHC4VA==}
-
-  hono@4.11.1:
-    resolution: {integrity: sha512-KsFcH0xxHes0J4zaQgWbYwmz3UPOOskdqZmItstUG93+Wk1ePBLkLGwbP9zlmh1BFUiL8Qp+Xfu9P7feJWpGNg==}
-    engines: {node: '>=16.9.0'}
 
   html-escaper@3.0.3:
     resolution: {integrity: sha512-RuMffC89BOWQoY0WKGpIhn5gX3iI54O6nRA0yC124NYVtzjmFWBIiFd8M0x+ZdX0P9R4lADg1mgP8C7PxGOWuQ==}
@@ -4093,9 +4051,6 @@ packages:
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
-  zod@4.1.8:
-    resolution: {integrity: sha512-5R1P+WwQqmmMIEACyzSvo4JXHY5WiAFHRMg+zBZKgKS+Q1viRa0C1hmUKtHltoIFKtIdki3pRxkmpP74jnNYHQ==}
-
   zustand@4.5.7:
     resolution: {integrity: sha512-CHOUy7mu3lbD6o6LJLfllpjkzhHXSBlX8B9+qPddUsIfeF5S/UZ5q0kmCsnRqT1UHFQZchNFDDzMbQsuesHWlw==}
     engines: {node: '>=12.7.0'}
@@ -4359,10 +4314,6 @@ snapshots:
       crelt: 1.0.6
       style-mod: 4.1.3
       w3c-keyname: 2.2.8
-
-  '@different-ai/opencode-browser@2.0.1(@opencode-ai/plugin@1.0.200)':
-    dependencies:
-      '@opencode-ai/plugin': 1.0.200
 
   '@dimforge/rapier3d-compat@0.12.0': {}
 
@@ -4918,13 +4869,6 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.19.1
 
-  '@opencode-ai/plugin@1.0.200':
-    dependencies:
-      '@opencode-ai/sdk': 1.0.200
-      zod: 4.1.8
-
-  '@opencode-ai/sdk@1.0.200': {}
-
   '@oslojs/encoding@1.1.0': {}
 
   '@paper-design/shaders-react@0.0.61(@types/react@19.2.7)(react@19.2.0)':
@@ -5158,10 +5102,6 @@ snapshots:
   '@types/babel__traverse@7.28.0':
     dependencies:
       '@babel/types': 7.28.5
-
-  '@types/bun@1.3.5':
-    dependencies:
-      bun-types: 1.3.5
 
   '@types/codemirror@5.60.8':
     dependencies:
@@ -5696,10 +5636,6 @@ snapshots:
       ieee754: 1.2.1
 
   builtin-modules@3.3.0: {}
-
-  bun-types@1.3.5:
-    dependencies:
-      '@types/node': 22.19.1
 
   cac@6.7.14: {}
 
@@ -6390,8 +6326,6 @@ snapshots:
   hex-rgb@4.3.0: {}
 
   hls.js@1.6.15: {}
-
-  hono@4.11.1: {}
 
   html-escaper@3.0.3: {}
 
@@ -8043,8 +7977,6 @@ snapshots:
       zod: 3.25.76
 
   zod@3.25.76: {}
-
-  zod@4.1.8: {}
 
   zustand@4.5.7(@types/react@19.2.7)(react@19.2.0):
     dependencies:
