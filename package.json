@@ -2,6 +2,7 @@
   "scripts": {
     "photo-to-splat": "./apps/photo-to-splat/start.sh",
     "build:portfolio": "pnpm --filter @digital-empire/portfolio build",
-    "build:blog": "pnpm --filter @digital-empire/blog build"
+    "build:blog": "pnpm --filter @digital-empire/blog build",
+    "build:recipes": "pnpm --filter @digital-empire/recipes build"
   }
 }
