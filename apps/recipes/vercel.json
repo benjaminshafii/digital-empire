@@ -1,6 +1,6 @@
 {
   "framework": "vite",
-  "installCommand": "cd ../.. && pnpm install",
+  "installCommand": "cd ../.. && pnpm install --no-frozen-lockfile",
   "buildCommand": "cd ../.. && pnpm run build:recipes",
   "outputDirectory": "dist",
   "routes": [
