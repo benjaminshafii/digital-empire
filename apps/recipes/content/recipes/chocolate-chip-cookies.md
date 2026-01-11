@@ -6,6 +6,9 @@ tags: [dessert, baking, cookies, family-favorite]
 yield:
   amount: 24
   unit: cookies
+batch:
+  label: batch
+  totalGrams: 1280
 prepTime: 15
 cookTime: 11
 totalTime: 26
@@ -28,12 +31,13 @@ ingredients:
     prep: packed
   - id: eggs
     name: Eggs
-    amount: 2
-    unit: whole
+    amount: 100
+    unit: g
+    prep: beaten
   - id: vanilla
     name: Vanilla extract
     amount: 10
-    unit: ml
+    unit: g
   - id: flour
     name: All-purpose flour
     amount: 280
@@ -57,7 +61,7 @@ notes: |
   - Brown the butter for extra flavor
   - Mix of milk and dark chocolate chips is great
 createdAt: 2025-01-07
-updatedAt: 2025-01-07
+updatedAt: 2026-01-11
 author: Family
 ---
 
@@ -67,7 +71,7 @@ author: Family
 
 2. **Cream butter and sugars** - Beat **225g butter** (softened), **150g sugar**, and **165g brown sugar** until light and fluffy, about 3 min.
 
-3. **Add wet ingredients** - Beat in **2 eggs** one at a time. Add **10ml vanilla extract**, mix until combined.
+3. **Add wet ingredients** - Beat in **100g eggs** in a slow stream. Add **10g vanilla extract**, mix until combined.
 
 4. **Mix dry ingredients** - In separate bowl, whisk **280g all-purpose flour**, **5g baking soda**, and **5g salt**.
 

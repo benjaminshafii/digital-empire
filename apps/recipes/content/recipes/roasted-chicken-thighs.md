@@ -6,6 +6,9 @@ tags: [chicken, dinner, roasted, gluten-free, meal-prep]
 yield:
   amount: 4
   unit: servings
+batch:
+  label: batch
+  totalGrams: 926
 prepTime: 10
 cookTime: 40
 totalTime: 50
@@ -19,7 +22,7 @@ ingredients:
   - id: olive-oil
     name: Olive oil
     amount: 30
-    unit: ml
+    unit: g
   - id: salt
     name: Salt
     amount: 8
@@ -49,7 +52,7 @@ notes: |
   - Squeeze roasted lemon over chicken before serving
   - Great for meal prep - keeps 4 days in fridge
 createdAt: 2025-01-07
-updatedAt: 2025-01-07
+updatedAt: 2026-01-11
 author: Family
 ---
 
@@ -59,7 +62,7 @@ author: Family
 
 2. **Prep chicken** - Pat **800g chicken thighs** completely dry with paper towels. This is key for crispy skin.
 
-3. **Season** - Rub chicken with **30ml olive oil**. Season generously with **8g salt** and **3g black pepper** on all sides.
+3. **Season** - Rub chicken with **30g olive oil**. Season generously with **8g salt** and **3g black pepper** on all sides.
 
 4. **Prep aromatics** (while oven heats) - Smash **20g garlic** cloves with the flat of a knife. Halve **60g lemon**.
 

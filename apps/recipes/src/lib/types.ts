@@ -11,6 +11,19 @@ export interface RecipeYield {
   unit: string;
 }
 
+export interface RecipeBatch {
+  label: string;
+  totalGrams: number;
+}
+
+export interface RecipeComponent {
+  name: string;
+  description?: string;
+  yieldGrams?: number;
+  ingredients: Ingredient[];
+  steps?: string[];
+}
+
 export interface RecipeFrontMatter {
   title: string;
   slug: string;
@@ -22,7 +35,9 @@ export interface RecipeFrontMatter {
   cookTime?: number;
   totalTime?: number;
   variables?: Record<string, number>;
-  ingredients: Ingredient[];
+  ingredients?: Ingredient[];
+  components?: RecipeComponent[];
+  batch?: RecipeBatch;
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -30,8 +45,11 @@ export interface RecipeFrontMatter {
 }
 
 export interface Recipe extends RecipeFrontMatter {
-  content: string; // Rendered HTML from markdown body
-  rawContent: string; // Raw markdown body
+  content: string;
+  rawContent: string;
+  ingredients: Ingredient[];
+  components: RecipeComponent[];
+  batch: RecipeBatch;
 }
 
 export interface ScaledIngredient extends Ingredient {

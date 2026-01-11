@@ -164,6 +164,18 @@
     @apply font-mono text-xl font-semibold bg-transparent border-b-3 border-ink-black/20 w-20 text-center focus:outline-none focus:border-ink-black;
   }
 
+  .batch-input {
+    @apply font-mono text-lg font-semibold bg-transparent border-b-3 border-ink-black/20 w-20 text-center focus:outline-none focus:border-ink-black;
+  }
+
+  .ingredient-input {
+    @apply w-20 text-right bg-transparent border-b border-ink/20 focus:outline-none focus:border-ink-black;
+  }
+
+  .component-header {
+    @apply font-mono text-[10px] uppercase tracking-widest text-ink-muted pb-2 border-b-3 border-ink-black;
+  }
+
   .search-input {
     @apply w-full px-4 py-3 font-mono text-[11px] tracking-widest bg-transparent border-3 border-ink-black/80 focus:outline-none focus:border-ink-black placeholder:text-ink-muted/50;
   }
