@@ -28,6 +28,7 @@ Build a collection of hyper-personal applications that serve my family. Access i
 - Every package/app has its own `AGENTS.md` describing local conventions and workflows.
 - The root `AGENTS.md` documents this structure and defines how local guidance overrides global rules.
 - `AGENTS.md` files are the canonical, self-describing guide for agent behavior and scope.
+- Maintain a gitignored OpenCode mirror of the repo for self-inspection, kept synced as needed.
 
 ## Agent-native architecture
 
