@@ -39,10 +39,11 @@ const recipes: Recipe[] = Object.entries(recipeFiles).map(([path, content]) => {
 });
 
 // Sort by updatedAt or createdAt, most recent first
-const normalizeDate = (value: Recipe["updatedAt"] | Recipe["createdAt"]): string => {
+const normalizeDate = (value: unknown): string => {
   if (!value) return "1970-01-01";
-  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "string") return value;
   if (typeof value === "number") return new Date(value).toISOString();
+  if (value instanceof Date) return value.toISOString();
   return String(value);
 };
 
