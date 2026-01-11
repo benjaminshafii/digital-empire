@@ -7,43 +7,30 @@ Skills are markdown documentation files that OpenCode reads to learn how to use 
 ```
 .opencode/skill/
 ├── README.md                    # This file
-├── self-improve/
-│   └── SKILL.md                 # Meta-skill for self-improvement (no credentials)
-├── bitwarden/
-│   ├── SKILL.example.md         # Template (committed to git)
-│   └── SKILL.md                 # Your config with credentials (gitignored)
-├── qbittorrent/
-│   ├── SKILL.example.md         # Template (committed to git)
-│   ├── SKILL.md                 # Your config with credentials (gitignored)
-│   ├── torrent-sources.example.json
-│   └── torrent-sources.json     # Your sources (gitignored)
-├── telegram/
-│   └── SKILL.md                 # (gitignored - contains bot token)
-├── home-assistant/
-│   └── SKILL.md                 # (gitignored - contains access token)
-└── setup/
-    └── SKILL.md                 # General setup notes
+├── <skill-name>/
+│   ├── SKILL.md                 # Prompt + usage (tracked)
+│   ├── .env.example             # Required env vars (tracked)
+│   ├── .env                     # Local credentials (gitignored)
+│   ├── load-env.ts              # Validates env + exports config
+│   ├── client.ts                # Shared fetch helper
+│   ├── first-call.ts            # Minimal auth check
+│   └── openapi.json             # Optional API spec
 ```
+
+Some legacy skills still use `SKILL.example.md` templates; migrate as needed.
 
 ## First-Time Setup
 
-After cloning this repo, copy the example files and add your credentials:
+After cloning this repo, create a local `.env` from the example and verify access:
 
 ```bash
-# Bitwarden
-cp .opencode/skill/bitwarden/SKILL.example.md .opencode/skill/bitwarden/SKILL.md
-# Edit SKILL.md to add your BW_CLIENTID and BW_CLIENTSECRET
-
-# qBittorrent  
-cp .opencode/skill/qbittorrent/SKILL.example.md .opencode/skill/qbittorrent/SKILL.md
-cp .opencode/skill/qbittorrent/torrent-sources.example.json .opencode/skill/qbittorrent/torrent-sources.json
-
-# Telegram (if needed)
-# Create .opencode/skill/telegram/SKILL.md with your bot token
-
-# Home Assistant (if needed)
-# Create .opencode/skill/home-assistant/SKILL.md with your access token
+# Example for a skill with API credentials
+cp .opencode/skill/<skill-name>/.env.example .opencode/skill/<skill-name>/.env
+# Fill in required env vars, then run the minimal check
+bun .opencode/skill/<skill-name>/first-call.ts
 ```
+
+If a skill includes additional example data files (like `torrent-sources.example.json`), copy them to their non-example names in the same folder.
 
 ## How Skills Work
 
@@ -60,6 +47,13 @@ cp .opencode/skill/qbittorrent/torrent-sources.example.json .opencode/skill/qbit
 ```bash
 mkdir -p .opencode/skill/<skill-name>
 ```
+
+Minimum scaffold files:
+- `SKILL.md`
+- `.env.example`
+- `load-env.ts`
+- `client.ts`
+- `first-call.ts`
 
 Then create `SKILL.md` with this template:
 
@@ -88,7 +82,8 @@ command here
 
 ## Security
 
-- `SKILL.md` files are gitignored because they may contain credentials
-- `SKILL.example.md` files are committed as templates
+- `SKILL.md` is tracked and should never include secrets
+- Store sensitive credentials in `.env` (gitignored) or Bitwarden
+- `.env.example` is committed as the credential template
 - Never commit API keys, tokens, or passwords to git
-- Store sensitive credentials in Bitwarden and reference them in skills
+- Extra data files with credentials should be gitignored (see `.gitignore`)
