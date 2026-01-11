@@ -3,70 +3,43 @@ import { formatTime } from "../lib/types";
 
 interface RecipeCardProps {
   recipe: Recipe;
+  index: number;
   onClick: () => void;
 }
 
-export function RecipeCard({ recipe, onClick }: RecipeCardProps) {
+export function RecipeCard({ recipe, index, onClick }: RecipeCardProps) {
   return (
-    <button
-      onClick={onClick}
-      className="recipe-card text-left w-full cursor-pointer group"
-    >
-      {/* Image */}
-      {recipe.image ? (
-        <div className="aspect-[4/3] bg-ink/5 mb-3 overflow-hidden">
-          <img
-            src={recipe.image}
-            alt={recipe.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
+    <button onClick={onClick} className="recipe-card w-full cursor-pointer group">
+      <div className="flex items-start gap-3">
+        <span className="font-mono text-xs text-ink-muted pt-0.5 font-bold ink-bleed">
+          {String(index + 1).padStart(2, "0")}
+        </span>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-sans font-black text-lg md:text-xl tight-tracking leading-tight group-hover:underline decoration-2 underline-offset-2 ink-bleed">
+            {recipe.title}
+          </h3>
+          {recipe.description && (
+            <p className="text-sm text-ink-muted mt-2 line-clamp-2">{recipe.description}</p>
+          )}
+          <div className="flex items-center gap-3 mt-3 flex-wrap">
+            {recipe.totalTime && (
+              <span className="time-badge">Total {formatTime(recipe.totalTime)}</span>
+            )}
+            {recipe.tags.length > 0 && (
+              <div className="flex gap-1.5 flex-wrap">
+                {recipe.tags.slice(0, 3).map((tag) => (
+                  <span key={tag} className="tag">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      ) : (
-        <div className="aspect-[4/3] bg-ink/5 mb-3 flex items-center justify-center">
-          <span className="text-4xl opacity-20">🍽</span>
-        </div>
-      )}
-
-      {/* Title */}
-      <h3 className="font-sans font-semibold text-lg mb-1 group-hover:underline">
-        {recipe.title}
-      </h3>
-
-      {/* Description */}
-      {recipe.description && (
-        <p className="text-sm text-ink-muted mb-3 line-clamp-2">
-          {recipe.description}
-        </p>
-      )}
-
-      {/* Tags */}
-      <div className="flex flex-wrap gap-1 mb-3">
-        {recipe.tags.slice(0, 3).map((tag) => (
-          <span key={tag} className="tag">
-            {tag}
-          </span>
-        ))}
+        <span className="font-mono text-[10px] text-ink-muted opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          OPEN
+        </span>
       </div>
-
-      {/* Time */}
-      {recipe.totalTime && (
-        <div className="time-badge">
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          {formatTime(recipe.totalTime)}
-        </div>
-      )}
     </button>
   );
 }
