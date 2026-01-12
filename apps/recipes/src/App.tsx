@@ -46,7 +46,7 @@ function RecipeShell({ children }: { children: ReactNode }) {
       </svg>
 
       <div
-        className="relative w-full max-w-4xl bg-white border-3 border-ink-black overflow-hidden"
+        className="relative w-full max-w-4xl bg-paper border-3 border-ink-black overflow-hidden"
         style={{ filter: "contrast(110%) brightness(100%)", transform: "rotate(-0.2deg)" }}
       >
         <div className="paper-texture" />

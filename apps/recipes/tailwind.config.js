@@ -5,20 +5,20 @@ export default {
     extend: {
       colors: {
         paper: {
-          DEFAULT: "#F5F2ED",
-          warm: "#F5F2ED",
-          cool: "#E6F2EF",
+          DEFAULT: "#F6F1E8",
+          warm: "#F2ECE2",
+          cool: "#EDF1EC",
         },
         ink: {
-          DEFAULT: "#1a1a1a",
-          black: "#050505",
-          light: "#333333",
-          muted: "#666666",
+          DEFAULT: "#1F1A16",
+          black: "#161311",
+          light: "#3E362E",
+          muted: "#6E665D",
         },
-        "outer-bg": "#ffffff",
+        "outer-bg": "#ECE7DD",
         accent: {
-          DEFAULT: "#4ade80",
-          muted: "#22c55e",
+          DEFAULT: "#4F8B72",
+          muted: "#6FA58A",
         },
       },
       fontFamily: {
