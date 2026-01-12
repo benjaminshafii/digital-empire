@@ -1,13 +1,1174 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sofa Pivot Simulator</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sofa Precision Visualizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0f172a; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        canvas { display: block; outline: none; }
+        .glass-panel { background: rgba(15, 23, 42, 0.90); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); }
+        .info-overlay { position: absolute; top: 20px; left: 20px; padding: 16px; border-radius: 12px; color: #e2e8f0; width: 280px; pointer-events: none; z-index: 10; }
+        .metric-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; }
+        .metric-label { color: #94a3b8; font-weight: 500; }
+        .metric-val { font-family: 'Courier New', monospace; font-weight: 700; color: #fff; }
+        .controls-panel { position: absolute; top: 20px; right: 20px; width: 320px; max-height: calc(100% - 40px); padding: 20px; border-radius: 16px; box-shadow: -10px 0 40px rgba(0,0,0,0.5); transition: transform 0.3s ease, opacity 0.3s ease; z-index: 20; overflow-y: auto; }
+        .controls-panel.collapsed { transform: translateX(calc(100% + 24px)); opacity: 0; pointer-events: none; }
+        .panel-toggle { position: absolute; right: 0; top: 50%; transform: translate(0, -50%); padding: 10px 12px; border-radius: 8px 0 0 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.15); color: #e2e8f0; cursor: pointer; z-index: 30; }
+        .is-hidden { opacity: 0; pointer-events: none; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+        .status-ok { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+        .status-fail { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+        .status-rec { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); animation: pulse 1.5s infinite; }
+        .status-play { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+        .status-manual { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+        
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; margin: 10px 0; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: #38bdf8; cursor: pointer; margin-top: -7px; box-shadow: 0 0 10px rgba(56, 189, 248, 0.5); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; }
+        select { background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px 12px; border-radius: 8px; font-size: 13px; width: 100%; outline: none; cursor: pointer; }
+        .cam-hint { position: absolute; bottom: 20px; left: 20px; background: rgba(0,0,0,0.5); padding: 8px 12px; border-radius: 8px; font-size: 11px; color: #94a3b8; pointer-events: none; }
+        
+        .gizmo-btn { font-size: 10px; font-weight: bold; padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.1); color: #aaa; transition: all 0.2s; pointer-events: auto; }
+        .gizmo-btn.active { background: #3b82f6; color: white; }
+        .rec-btn { font-size: 10px; font-weight: bold; padding: 6px 12px; border-radius: 6px; background: #ef4444; color: white; box-shadow: 0 2px 10px rgba(239,68,68,0.3); pointer-events: auto; }
+        .rec-btn.recording { background: white; color: #ef4444; }
+    </style>
+</head>
+<body>
+
+    <div id="info-overlay" class="info-overlay glass-panel">
+        <div id="statusBadge" class="status-badge status-ok">Ready</div>
+        <div class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 border-b border-gray-700 pb-1">Room Dimensions</div>
+        <div class="metric-row"><span class="metric-label">Hallway</span><span class="metric-val">1.10 m</span></div>
+        <div class="metric-row"><span class="metric-label">Door Width</span><span class="metric-val">0.87 m</span></div>
+        <div class="metric-row"><span class="metric-label">Door Height</span><span class="metric-val">1.90 m</span></div>
+        <div class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 mt-4 border-b border-gray-700 pb-1">Live Physics</div>
+        <div class="metric-row"><span class="metric-label">Clearance</span><span id="disp-clearance" class="metric-val">--</span></div>
+        <div class="metric-row"><span class="metric-label">Pivot</span><span id="disp-pivot" class="metric-val">FREE</span></div>
+        
+        <div class="mt-4 border-t border-white/10 pt-2">
+            <div class="text-[10px] text-gray-400 mb-2 uppercase font-bold">Gizmo Mode</div>
+            <div class="flex gap-2">
+                <button id="mode-translate" class="gizmo-btn active">MOVE (T)</button>
+                <button id="mode-rotate" class="gizmo-btn">ROTATE (R)</button>
+            </div>
+            <div class="mt-2">
+                <button id="btn-flat-move" class="gizmo-btn active w-full">FLAT MOVE ON</button>
+                <div class="text-[10px] text-gray-400 mt-1">Locks Y while translating.</div>
+            </div>
+        </div>
+        
+        <div class="mt-4 border-t border-white/10 pt-2">
+            <div class="text-[10px] text-gray-400 mb-2 uppercase font-bold">Recorder</div>
+            <div class="flex gap-2">
+                <button id="btn-rec-action" class="rec-btn flex-1">● REC</button>
+                <button id="btn-replay" class="gizmo-btn flex-1">▶ REPLAY</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="cam-hint">Click handle or sofa • Drag gizmo • WASD/Arrows: Nudge • Lock pivot for rotations</div>
+
+    <div class="controls-panel glass-panel">
+        <div class="space-y-4">
+            <div class="flex items-center justify-between pb-2 border-b border-white/10">
+                <div class="text-[10px] text-gray-400 uppercase font-bold">Controls</div>
+                <button id="btn-toggle-info" class="gizmo-btn">INFO ON</button>
+            </div>
+            <div>
+                <div class="flex justify-between text-xs text-blue-200 mb-1 font-bold uppercase">Auto-Pilot Technique</div>
+                <select id="technique-select">
+                    <option value="manual">Manual Control (User)</option>
+                    <option value="side">Wall-Constrained Pull</option>
+                    <option value="hook">The Hook (Pivot)</option>
+                </select>
+                <div class="text-[10px] text-gray-400 mt-1 italic" id="tech-desc">Drag handles to simulate the pull manually.</div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <button id="btn-legs" class="bg-slate-700 hover:bg-slate-600 text-xs py-2 rounded border border-white/10 text-white transition flex justify-between px-3">
+                    <span>LEGS</span> <span id="legs-status" class="text-green-400">ON</span>
+                </button>
+                <button id="btn-cushions" class="bg-slate-700 hover:bg-slate-600 text-xs py-2 rounded border border-white/10 text-white transition flex justify-between px-3">
+                    <span>CUSHIONS</span> <span id="cushions-status" class="text-green-400">ON</span>
+                </button>
+            </div>
+
+            <div class="border-t border-white/10 pt-3">
+                <div class="text-[10px] text-blue-200 font-bold uppercase">Pivot Lock</div>
+                <div class="grid grid-cols-2 gap-2 mt-2">
+                    <button id="pivot-free" class="gizmo-btn">FREE</button>
+                    <button id="pivot-center" class="gizmo-btn">CENTER</button>
+                    <button id="pivot-front-left" class="gizmo-btn">FRONT L</button>
+                    <button id="pivot-front-right" class="gizmo-btn">FRONT R</button>
+                    <button id="pivot-back-left" class="gizmo-btn">BACK L</button>
+                    <button id="pivot-back-right" class="gizmo-btn">BACK R</button>
+                </div>
+                <div class="text-[10px] text-gray-400 mt-1">Drag uses locked pivot anchor.</div>
+            </div>
+
+            <div class="border-t border-white/10 pt-3">
+                <div class="text-[10px] text-blue-200 font-bold uppercase">Custom Model</div>
+                <div class="flex gap-2 mt-1">
+                    <label class="gizmo-btn flex-1 text-center cursor-pointer">
+                        <input id="model-input" type="file" accept=".glb,.gltf" class="hidden">
+                        LOAD GLB
+                    </label>
+                    <button id="btn-model-reset" class="gizmo-btn flex-1">DEFAULT</button>
+                </div>
+                <div class="text-[10px] text-gray-400 mt-1 italic" id="model-status">Using generated sofa.</div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4 pt-1">
+                <div>
+                    <div class="text-[10px] text-blue-200 font-bold uppercase">Length</div>
+                    <input type="range" id="param-len" min="1.8" max="2.6" step="0.01" value="2.26">
+                    <div class="text-[9px] text-right text-gray-400" id="val-len">2.26m</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-blue-200 font-bold uppercase">Height</div>
+                    <input type="range" id="param-h" min="0.7" max="1.1" step="0.01" value="0.91">
+                    <div class="text-[9px] text-right text-gray-400" id="val-h">0.91m</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-blue-200 font-bold uppercase">Depth</div>
+                    <input type="range" id="param-d" min="0.8" max="1.1" step="0.01" value="0.96">
+                    <div class="text-[9px] text-right text-gray-400" id="val-d">0.96m</div>
+                </div>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+                <button id="btn-reset" class="flex-1 bg-slate-700 text-white text-xs font-bold py-3 rounded-lg">RESET</button>
+                <button id="btn-sim" class="flex-[2] bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-3 rounded-lg shadow-lg">PLAY ANIMATION</button>
+            </div>
+        </div>
+    </div>
+
+    <button id="panel-toggle" class="panel-toggle">HIDE CONTROLS</button>
+
+    <script>
+        // CONFIG
+        const ROOM = { hallW: 1.10, doorW: 0.87, wallThick: 0.15, doorH: 1.90 };
+        const STATE = {
+            len: 2.26, height: 0.91, depth: 0.96,
+            legsHeight: 0.06, cushionsDepth: 0.10,
+            hasLegs: true, hasCushions: true,
+            technique: 'manual', 
+            simulating: false, progress: 0, collision: false,
+            recording: false, replaying: false,
+            frames: []
+        };
+
+        // THREE JS
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0f172a);
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 100);
+        camera.position.set(3.5, 4.0, 3.5); camera.lookAt(0, 0.8, 0);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; controls.maxPolarAngle = Math.PI/2 - 0.05;
+        controls.mouseButtons = {
+            LEFT: THREE.MOUSE.ROTATE,
+            MIDDLE: THREE.MOUSE.DOLLY,
+            RIGHT: THREE.MOUSE.PAN
+        };
+
+        // Transform Controls
+        const transformControl = new THREE.TransformControls(camera, renderer.domElement);
+        let validState = null;
+        let flatMoveEnabled = true;
+        let lockedY = null;
+        const MOVE_STEP = 0.05;
+        const MOVE_STEP_FAST = 0.15;
+        const MOVE_STEP_FINE = 0.015;
+
+        transformControl.addEventListener('change', function () {
+            if(transformControl.object && STATE.technique === 'manual' && !STATE.replaying) {
+                transformControl.object.updateMatrixWorld();
+
+                if(flatMoveEnabled && transformControl.mode === 'translate' && lockedY !== null) {
+                    transformControl.object.position.y = lockedY;
+                }
+                
+                // Physics Check
+                if (checkCollisions()) {
+                    // Revert if collision
+                    if(validState) {
+                        transformControl.object.position.copy(validState.position);
+                        transformControl.object.rotation.copy(validState.rotation);
+                    }
+                } else {
+                    validState = {
+                        position: transformControl.object.position.clone(),
+                        rotation: transformControl.object.rotation.clone()
+                    };
+                }
+            }
+        });
+
+        transformControl.addEventListener('dragging-changed', function (event) {
+            controls.enabled = !event.value;
+            if(event.value) {
+                enterManualMode();
+                
+                if(transformControl.object) {
+                    validState = {
+                        position: transformControl.object.position.clone(),
+                        rotation: transformControl.object.rotation.clone()
+                    };
+                    if(flatMoveEnabled && transformControl.mode === 'translate') {
+                        lockedY = transformControl.object.position.y;
+                    }
+                }
+            } else {
+                lockedY = null;
+            }
+        });
+        scene.add(transformControl);
+        transformControl.setSpace('world');
+        transformControl.setSize(1.35);
+
+        // Lights
+        const amb = new THREE.AmbientLight(0xffffff, 0.5); scene.add(amb);
+        const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+        dir.position.set(2, 5, 2); dir.castShadow = true; scene.add(dir);
+
+        // Mats
+        const matWall = new THREE.MeshStandardMaterial({ color: 0x334155 });
+        const matSofa = new THREE.MeshStandardMaterial({ color: 0x38bdf8 });
+        const matCrash = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0x991b1b });
+        const matSqueeze = new THREE.MeshStandardMaterial({ color: 0xf59e0b });
+        const matSlide = new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x064e3b });
+        const matHandle = new THREE.MeshBasicMaterial({ color: 0xffff00, opacity: 0.6, transparent: true, depthTest: false });
+        const matHandleSel = new THREE.MeshBasicMaterial({ color: 0xffaa00, opacity: 0.8, transparent: true, depthTest: false });
+        const matHandleHover = new THREE.MeshBasicMaterial({ color: 0x7dd3fc, opacity: 0.9, transparent: true, depthTest: false });
+        const matPivot = new THREE.MeshBasicMaterial({ color: 0x0ea5e9, opacity: 0.7, transparent: true, depthTest: false });
+        const matPivotActive = new THREE.MeshBasicMaterial({ color: 0x22c55e, opacity: 0.9, transparent: true, depthTest: false });
+
+        // Room
+        const walls = [];
+        const wallGroup = new THREE.Group(); scene.add(wallGroup);
+        const fl = new THREE.Mesh(new THREE.PlaneGeometry(10,10), new THREE.MeshStandardMaterial({color:0x1e293b}));
+        fl.rotation.x = -Math.PI/2; fl.receiveShadow=true; wallGroup.add(fl);
+
+        function addWall(x,z,w,d,type) {
+            const m = new THREE.Mesh(new THREE.BoxGeometry(w,2.5,d), matWall);
+            m.position.set(x,1.25,z); m.castShadow=true; m.receiveShadow=true;
+            wallGroup.add(m);
+            walls.push({ minX: x-w/2, maxX: x+w/2, minZ: z-d/2, maxZ: z+d/2, type: type });
+        }
+        
+        const hw = ROOM.hallW, dw = ROOM.doorW, th = ROOM.wallThick;
+        addWall(0, -hw/2 - th/2, 10, th, 'back'); 
+        addWall(-2 - dw/2, hw/2 + th/2, 4, th, 'front'); 
+        addWall(2 + dw/2, hw/2 + th/2, 4, th, 'front'); 
+        const header = new THREE.Mesh(new THREE.BoxGeometry(dw, 2.5-ROOM.doorH, th), matWall);
+        header.position.set(0, ROOM.doorH + (2.5-ROOM.doorH)/2, hw/2 + th/2);
+        wallGroup.add(header);
+
+        // Sofa
+        let mainGroup, tiltGroup, standGroup, handleGroup, pivotGroup;
+        let pivotObj = new THREE.Object3D();
+        scene.add(pivotObj);
+        
+        let sofaParts = [];
+        let selectedHandle = null;
+        let hoverHandle = null;
+        let activePivotIndex = null;
+        const pivotPoints = [];
+        const pivotNames = ["BACK LEFT", "BACK RIGHT", "FRONT LEFT", "FRONT RIGHT", "CENTER"];
+        let customModel = null;
+        let customModelBaseSize = null;
+        const gltfLoader = new THREE.GLTFLoader();
+        let panelCollapsed = false;
+        let infoVisible = true;
+        
+        function initSofaGroups() {
+            mainGroup = new THREE.Group();
+            tiltGroup = new THREE.Group();
+            standGroup = new THREE.Group();
+            handleGroup = new THREE.Group();
+            pivotGroup = new THREE.Group();
+            
+            mainGroup.add(tiltGroup);
+            tiltGroup.add(standGroup);
+            standGroup.add(handleGroup);
+            standGroup.add(pivotGroup);
+            scene.add(mainGroup);
+            
+            mainGroup.position.set(-3.5, 0.45, 0); // Start Pos
+        }
+        initSofaGroups();
+
+        function registerSofaMesh(mesh) {
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            if (!mesh.userData.baseMaterial) {
+                mesh.userData.baseMaterial = mesh.material;
+            }
+            sofaParts.push(mesh);
+        }
+
+        function buildSofa() {
+            // Rebuild geometry without resetting MainGroup position
+            while(standGroup.children.length > 0){ 
+                standGroup.remove(standGroup.children[0]); 
+            }
+            
+            // Re-create HandleGroup
+            handleGroup = new THREE.Group();
+            pivotGroup = new THREE.Group();
+            standGroup.add(handleGroup);
+            standGroup.add(pivotGroup);
+            
+            sofaParts = [];
+            selectedHandle = null;
+            hoverHandle = null;
+            pivotPoints.length = 0;
+
+            const L = STATE.len;
+            const H = STATE.hasLegs ? STATE.height : STATE.height - STATE.legsHeight;
+            const D = STATE.hasCushions ? STATE.depth : STATE.depth - STATE.cushionsDepth;
+            const SeatH = 0.45; const BackD = 0.20; const ArmW = 0.15;
+
+            if(customModel && customModelBaseSize) {
+                customModel.scale.set(
+                    L / customModelBaseSize.x,
+                    H / customModelBaseSize.y,
+                    D / customModelBaseSize.z
+                );
+                standGroup.add(customModel);
+
+                customModel.traverse((child) => {
+                    if(child.isMesh) {
+                        registerSofaMesh(child);
+                    }
+                });
+
+                const box = new THREE.Box3().setFromObject(customModel);
+                const size = new THREE.Vector3();
+                box.getSize(size);
+                createHandle(-size.x/2, -size.y/2, size.z/2, "Left Foot");
+                createHandle(size.x/2, -size.y/2, size.z/2, "Right Foot");
+                createHandle(0, size.y/2, -size.z/2, "Top Back");
+            } else {
+                const grp = new THREE.Group();
+                // Seat
+                const seat = new THREE.Mesh(new THREE.BoxGeometry(L, SeatH, D), matSofa);
+                seat.position.set(0, -H/2 + SeatH/2, 0); grp.add(seat); registerSofaMesh(seat);
+                // Back
+                const back = new THREE.Mesh(new THREE.BoxGeometry(L, H-SeatH, BackD), matSofa);
+                back.position.set(0, -H/2 + SeatH + (H-SeatH)/2, -D/2 + BackD/2); grp.add(back); registerSofaMesh(back);
+                // Arms
+                const armH = H * 0.85;
+                const armL = new THREE.Mesh(new THREE.BoxGeometry(ArmW, armH-SeatH, D), matSofa);
+                armL.position.set(-L/2 + ArmW/2, -H/2 + SeatH + (armH-SeatH)/2, 0); grp.add(armL); registerSofaMesh(armL);
+                const armR = new THREE.Mesh(new THREE.BoxGeometry(ArmW, armH-SeatH, D), matSofa);
+                armR.position.set(L/2 - ArmW/2, -H/2 + SeatH + (armH-SeatH)/2, 0); grp.add(armR); registerSofaMesh(armR);
+
+                standGroup.add(grp);
+
+                createHandle(-L/2, -H/2, D/2, "Left Foot");
+                createHandle(L/2, -H/2, D/2, "Right Foot");
+                createHandle(0, H/2, -D/2 + BackD, "Top Back");
+            }
+            
+            // If dragging, we might need to update pivot visual
+            if(transformControl.object === pivotObj) {
+                // Keep it
+            }
+            updateHandleVisuals();
+            buildPivotPoints();
+            checkCollisions();
+        }
+
+        function createHandle(x, y, z, name) {
+            const h = new THREE.Mesh(new THREE.SphereGeometry(0.16), matHandle);
+            h.position.set(x, y, z);
+            h.userData = { isHandle: true, name: name };
+            h.renderOrder = 999;
+            handleGroup.add(h);
+        }
+
+        function createPivotPoint(position, name, index) {
+            const pivot = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.14), matPivot);
+            pivot.position.copy(position);
+            pivot.userData = { isPivot: true, name: name, index: index };
+            pivot.renderOrder = 998;
+            pivotGroup.add(pivot);
+            pivotPoints.push(pivot);
+        }
+
+        function getSofaBoundsLocal() {
+            const bounds = new THREE.Box3();
+            if(sofaParts.length === 0) return bounds;
+
+            standGroup.updateMatrixWorld(true);
+            const inverse = new THREE.Matrix4().copy(standGroup.matrixWorld).invert();
+            const tempBox = new THREE.Box3();
+
+            sofaParts.forEach((part) => {
+                if (!part.geometry.boundingBox) part.geometry.computeBoundingBox();
+                tempBox.copy(part.geometry.boundingBox);
+                tempBox.applyMatrix4(part.matrixWorld);
+                tempBox.applyMatrix4(inverse);
+                bounds.union(tempBox);
+            });
+
+            return bounds;
+        }
+
+        function buildPivotPoints() {
+            while(pivotGroup.children.length > 0) {
+                pivotGroup.remove(pivotGroup.children[0]);
+            }
+            pivotPoints.length = 0;
+
+            const bounds = getSofaBoundsLocal();
+            if(bounds.isEmpty()) return;
+
+            const min = bounds.min;
+            const max = bounds.max;
+            const center = new THREE.Vector3();
+            bounds.getCenter(center);
+            const baseY = min.y;
+
+            createPivotPoint(new THREE.Vector3(min.x, baseY, min.z), pivotNames[0], 0);
+            createPivotPoint(new THREE.Vector3(max.x, baseY, min.z), pivotNames[1], 1);
+            createPivotPoint(new THREE.Vector3(min.x, baseY, max.z), pivotNames[2], 2);
+            createPivotPoint(new THREE.Vector3(max.x, baseY, max.z), pivotNames[3], 3);
+            createPivotPoint(new THREE.Vector3(center.x, baseY, center.z), pivotNames[4], 4);
+
+            updatePivotVisuals();
+            updatePivotUI();
+            updatePivotIndicator();
+            if(activePivotIndex !== null) {
+                attachActivePivot();
+            }
+        }
+
+        function updatePivotVisuals() {
+            pivotPoints.forEach((pivot) => {
+                pivot.material = pivot.userData.index === activePivotIndex ? matPivotActive : matPivot;
+            });
+        }
+
+        function updatePivotIndicator() {
+            const pivotEl = document.getElementById('disp-pivot');
+            if(!pivotEl) return;
+            if(activePivotIndex === null) {
+                pivotEl.innerText = "FREE";
+            } else {
+                pivotEl.innerText = pivotNames[activePivotIndex];
+            }
+        }
+
+        function getActivePivotWorldPosition(fallback) {
+            if(activePivotIndex === null) return fallback;
+            const pivot = pivotPoints[activePivotIndex];
+            if(!pivot) return fallback;
+            const worldPos = new THREE.Vector3();
+            pivot.getWorldPosition(worldPos);
+            return worldPos;
+        }
+
+        function attachActivePivot() {
+            if(activePivotIndex === null || !pivotPoints[activePivotIndex]) return;
+            const pivotWorld = new THREE.Vector3();
+            pivotPoints[activePivotIndex].getWorldPosition(pivotWorld);
+
+            scene.attach(mainGroup);
+            const sofaQuat = new THREE.Quaternion();
+            mainGroup.getWorldQuaternion(sofaQuat);
+            pivotObj.position.copy(pivotWorld);
+            pivotObj.quaternion.copy(sofaQuat);
+            pivotObj.attach(mainGroup);
+            transformControl.attach(pivotObj);
+
+            validState = {
+                position: pivotObj.position.clone(),
+                rotation: pivotObj.rotation.clone()
+            };
+        }
+
+        function setActivePivot(index) {
+            activePivotIndex = index;
+            enterManualMode();
+            updatePivotVisuals();
+            updatePivotUI();
+            updatePivotIndicator();
+            if(activePivotIndex !== null) {
+                attachActivePivot();
+            } else if(selectedHandle) {
+                selectHandle(selectedHandle);
+            }
+        }
+
+        function updatePivotUI() {
+            const buttons = [
+                { id: 'pivot-free', index: null },
+                { id: 'pivot-center', index: 4 },
+                { id: 'pivot-front-left', index: 2 },
+                { id: 'pivot-front-right', index: 3 },
+                { id: 'pivot-back-left', index: 0 },
+                { id: 'pivot-back-right', index: 1 }
+            ];
+
+            buttons.forEach((btn) => {
+                const el = document.getElementById(btn.id);
+                if(!el) return;
+                const isActive = btn.index === activePivotIndex || (btn.index === null && activePivotIndex === null);
+                el.className = isActive ? "gizmo-btn active" : "gizmo-btn";
+            });
+        }
+
+        // --- INTERACTION ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        
+        window.addEventListener('pointerdown', onPointerDown);
+        window.addEventListener('pointermove', onPointerMove);
+        
+        function onPointerMove(event) {
+            if (event.target.closest('.controls-panel')) return;
+            if(!handleGroup || handleGroup.children.length === 0) return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(handleGroup.children);
+            const nextHover = intersects.length > 0 ? intersects[0].object : null;
+
+            if(nextHover !== hoverHandle) {
+                hoverHandle = nextHover;
+                updateHandleVisuals();
+            }
+        }
+
+        function onPointerDown(event) {
+            if (event.target.closest('.controls-panel')) return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(handleGroup.children);
+            
+            const pivotHits = raycaster.intersectObjects(pivotPoints);
+            if(pivotHits.length > 0) {
+                const pivot = pivotHits[0].object;
+                setActivePivot(pivot.userData.index);
+                return;
+            }
+
+            if (intersects.length > 0) {
+                const handle = intersects[0].object;
+                selectHandle(handle);
+                return;
+            }
+
+            const sofaHits = raycaster.intersectObjects(sofaParts, true);
+            if(sofaHits.length > 0) {
+                const nearest = findNearestHandle(sofaHits[0].point);
+                if(nearest) {
+                    selectHandle(nearest);
+                }
+            }
+        }
+
+        function selectHandle(handle) {
+            selectedHandle = handle;
+            hoverHandle = handle;
+            updateHandleVisuals();
+
+            const worldPos = new THREE.Vector3();
+            handle.getWorldPosition(worldPos);
+            const pivotWorld = getActivePivotWorldPosition(worldPos);
+            
+            scene.attach(mainGroup);
+            const sofaQuat = new THREE.Quaternion();
+            mainGroup.getWorldQuaternion(sofaQuat);
+            pivotObj.position.copy(pivotWorld);
+            pivotObj.quaternion.copy(sofaQuat);
+            pivotObj.attach(mainGroup);
+            transformControl.attach(pivotObj);
+            
+            validState = {
+                position: pivotObj.position.clone(),
+                rotation: pivotObj.rotation.clone()
+            };
+            
+            setBadge("HANDLE: " + handle.userData.name, "manual");
+        }
+
+        function updateHandleVisuals() {
+            handleGroup.children.forEach(h => {
+                if(h === selectedHandle) {
+                    h.material = matHandleSel;
+                } else if(h === hoverHandle) {
+                    h.material = matHandleHover;
+                } else {
+                    h.material = matHandle;
+                }
+            });
+        }
+
+        function findNearestHandle(point) {
+            let nearest = null;
+            let minDist = Infinity;
+            handleGroup.children.forEach(h => {
+                const pos = new THREE.Vector3();
+                h.getWorldPosition(pos);
+                const dist = pos.distanceTo(point);
+                if(dist < minDist) {
+                    minDist = dist;
+                    nearest = h;
+                }
+            });
+            return nearest;
+        }
+
+        const moveKeyMap = {
+            arrowup: { x: 0, z: 1 },
+            arrowdown: { x: 0, z: -1 },
+            arrowleft: { x: -1, z: 0 },
+            arrowright: { x: 1, z: 0 },
+            w: { x: 0, z: 1 },
+            s: { x: 0, z: -1 },
+            a: { x: -1, z: 0 },
+            d: { x: 1, z: 0 }
+        };
+
+        window.addEventListener('keydown', function (event) {
+            const target = event.target;
+            if(target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.isContentEditable)) {
+                return;
+            }
+
+            const key = event.key.toLowerCase();
+            if(key === 't') { setTransformMode('translate'); return; }
+            if(key === 'r') { setTransformMode('rotate'); return; }
+
+            const move = moveKeyMap[key];
+            if(move) {
+                event.preventDefault();
+                const step = getMoveStep(event);
+                nudgeSofa(move.x * step, move.z * step);
+            }
+        });
+
+        function setTransformMode(mode) {
+            transformControl.setMode(mode);
+            transformControl.setSpace(mode === 'rotate' ? 'local' : 'world');
+            applyFlatMoveConstraints();
+            updateGizmoUI(mode);
+        }
+
+        function updateGizmoUI(mode) {
+            document.getElementById('mode-translate').className = mode==='translate' ? "gizmo-btn active" : "gizmo-btn";
+            document.getElementById('mode-rotate').className = mode==='rotate' ? "gizmo-btn active" : "gizmo-btn";
+        }
+
+        function getMoveStep(event) {
+            if(event.shiftKey) return MOVE_STEP_FAST;
+            if(event.altKey) return MOVE_STEP_FINE;
+            return MOVE_STEP;
+        }
+
+        function nudgeSofa(dx, dz) {
+            const target = transformControl.object || mainGroup;
+            if(!target) return;
+            if(target === mainGroup && mainGroup.parent !== scene) {
+                scene.attach(mainGroup);
+            }
+
+            enterManualMode();
+
+            const prevPos = target.position.clone();
+            const prevRot = target.rotation.clone();
+
+            target.position.x += dx;
+            target.position.z += dz;
+            target.position.y = prevPos.y;
+
+            const crashed = checkCollisions();
+            if(crashed) {
+                target.position.copy(prevPos);
+                target.rotation.copy(prevRot);
+            } else if(target === transformControl.object) {
+                validState = {
+                    position: target.position.clone(),
+                    rotation: target.rotation.clone()
+                };
+            }
+        }
+
+        // --- SIMULATION LOOP ---
+        function updateAnimation(t) {
+            const L = STATE.len; const H = STATE.hasLegs ? STATE.height : STATE.height - STATE.legsHeight;
+            const D = STATE.hasCushions ? STATE.depth : STATE.depth - STATE.cushionsDepth;
+            const hw = ROOM.hallW;
+
+            if(mainGroup.parent !== scene) scene.attach(mainGroup);
+
+            if(STATE.technique === 'side') {
+                if(t<0.2) {
+                    const p = t/0.2;
+                    mainGroup.position.set(-3.5 + p*3.5, H/2, 0);
+                    standGroup.rotation.z=0; tiltGroup.rotation.x=0; mainGroup.rotation.y = 0;
+                }
+                else if(t<0.4) {
+                    const p = (t-0.2)/0.2; const e = p*p*(3-2*p);
+                    standGroup.rotation.z = e * -Math.PI/2;
+                    mainGroup.position.y = (1-e)*H/2 + e*L/2;
+                }
+                else if(t<0.6) {
+                    const p = (t-0.4)/0.2; const e = p*p*(3-2*p);
+                    const targetZ = -hw/2 + D/2 + 0.01;
+                    mainGroup.position.z = e * targetZ;
+                }
+                else {
+                    const p = (t-0.6)/0.4;
+                    const wallZ = -hw/2;
+                    const startFeetZ = -hw/2 + D;
+                    const endFeetZ = 2.0;
+                    const feetZ = startFeetZ + p * (endFeetZ - startFeetZ);
+                    const currentYaw = 10 * Math.PI/180; 
+                    const K = feetZ - wallZ;
+                    const K_eff = K / Math.cos(currentYaw);
+                    const hyp = Math.sqrt(L*L + D*D);
+                    const alpha = Math.atan2(D, L);
+                    let theta = 0;
+                    if(K_eff < hyp) theta = Math.asin(K_eff/hyp) - alpha;
+                    if(theta < 0) theta = 0;
+                    tiltGroup.rotation.x = -theta;
+                    mainGroup.rotation.y = currentYaw; 
+                    const cosT = Math.cos(theta), sinT = Math.sin(theta);
+                    const feetY_local = (-L/2)*cosT - (D/2)*sinT;
+                    const feetZ_local = (-L/2)*sinT + (D/2)*cosT;
+                    const cosY = Math.cos(currentYaw), sinY = Math.sin(currentYaw);
+                    const rX = feetZ_local * sinY;
+                    const rZ = feetZ_local * cosY;
+                    mainGroup.position.x = -rX;
+                    mainGroup.position.y = -feetY_local;
+                    mainGroup.position.z = feetZ - rZ;
+                }
+            } else if (STATE.technique === 'hook') {
+                 if (t < 0.3) {
+                     mainGroup.position.x = -3.5 + (t/0.3 * 3.0);
+                 } else if (t < 0.7) {
+                     const p = (t-0.3)/0.4;
+                     mainGroup.position.y = D/2; 
+                     standGroup.rotation.x = -Math.PI/2; 
+                     mainGroup.rotation.y = -p * Math.PI/2;
+                     mainGroup.position.x = -0.5 + p*0.5;
+                     mainGroup.position.z = p*0.8;
+                 } else {
+                     const p = (t-0.7)/0.3;
+                     mainGroup.position.z = 0.8 + p*2.0;
+                 }
+            } else if (STATE.technique === 'upright') {
+                const p = t;
+                mainGroup.position.x = -3.5 + p*3.5;
+                if(p>0.5) mainGroup.position.z = (p-0.5)*2;
+            }
+        }
+
+        function applySofaMaterial(material) {
+            sofaParts.forEach(m => { m.material = material; });
+        }
+
+        function restoreSofaMaterial() {
+            sofaParts.forEach(m => { m.material = m.userData.baseMaterial || matSofa; });
+        }
+
+        // --- COLLISION ---
+        function checkCollisions() {
+            if(!mainGroup) return false;
+            let crash = false;
+            let squeeze = false;
+            let sliding = false;
+            let reason = "";
+            let maxY = 0;
+
+            if(pivotObj.parent) pivotObj.updateMatrixWorld();
+            mainGroup.updateMatrixWorld();
+
+            for(let part of sofaParts) {
+                if (!part.geometry.boundingBox) part.geometry.computeBoundingBox();
+                const box = part.geometry.boundingBox;
+                const corners = [
+                    new THREE.Vector3(box.min.x, box.min.y, box.min.z), new THREE.Vector3(box.max.x, box.min.y, box.min.z),
+                    new THREE.Vector3(box.max.x, box.min.y, box.max.z), new THREE.Vector3(box.min.x, box.min.y, box.max.z),
+                    new THREE.Vector3(box.min.x, box.max.y, box.min.z), new THREE.Vector3(box.max.x, box.max.y, box.min.z),
+                    new THREE.Vector3(box.max.x, box.max.y, box.max.z), new THREE.Vector3(box.min.x, box.max.y, box.max.z)
+                ];
+                
+                for(let p of corners) {
+                    p.applyMatrix4(part.matrixWorld);
+                    if(p.y > maxY) maxY = p.y;
+
+                    // Hard Limits (Back Wall & Floor)
+                    if (p.z < -ROOM.hallW/2) { crash = true; reason = "BACK WALL"; }
+                    if (p.y < -0.02) { crash = true; reason = "FLOOR"; } // Tolerance
+
+                    // Door Collision
+                    const doorPlane = ROOM.hallW/2; 
+                    const halfDoor = ROOM.doorW/2;
+                    const squeezeTol = 0.04;
+
+                    if(p.z > doorPlane) {
+                        // Check if hitting front wall (Left or Right of door)
+                        if (p.x < -halfDoor - squeezeTol || p.x > halfDoor + squeezeTol) {
+                            crash = true; reason = "FRONT WALL";
+                        } else if (p.x < -halfDoor || p.x > halfDoor) {
+                            squeeze = true; 
+                        }
+                        
+                        // Header
+                        if(p.x > -halfDoor && p.x < halfDoor) {
+                            if (p.y > ROOM.doorH + squeezeTol) {
+                                crash = true; reason = "HEADER";
+                            } else if (p.y > ROOM.doorH) {
+                                squeeze = true; 
+                            }
+                        }
+                    }
+                    if (p.z < -ROOM.hallW/2 + 0.02) sliding = true;
+                }
+            }
+
+            const clrVal = ROOM.doorH - maxY;
+            const clrEl = document.getElementById('disp-clearance');
+            if(clrEl) {
+                clrEl.innerText = (clrVal >= 0 ? "+" : "") + clrVal.toFixed(2) + "m";
+                clrEl.style.color = clrVal >= 0 ? "#34d399" : "#f87171";
+            }
+
+            if(crash) {
+                applySofaMaterial(matCrash);
+                if(STATE.technique !== 'manual') setBadge(reason + " CRASH", "fail");
+            } else if(sliding && STATE.technique === 'side') {
+                applySofaMaterial(matSlide);
+            } else if(squeeze) {
+                applySofaMaterial(matSqueeze);
+            } else {
+                restoreSofaMaterial();
+            }
+
+            STATE.collision = crash;
+            return crash;
+        }
+
+        // --- RECORDING ---
+        let replayFrame = 0;
+        
+        document.getElementById('btn-rec-action').onclick = () => {
+            if(STATE.recording) {
+                STATE.recording = false;
+                document.getElementById('btn-rec-action').innerText = "● REC";
+                document.getElementById('btn-rec-action').classList.remove('recording');
+                setBadge("RECORDING STOPPED", "ok");
+            } else {
+                STATE.frames = [];
+                STATE.recording = true;
+                document.getElementById('btn-rec-action').innerText = "■ STOP";
+                document.getElementById('btn-rec-action').classList.add('recording');
+                setBadge("RECORDING...", "rec");
+            }
+        };
+
+        document.getElementById('btn-replay').onclick = () => {
+            if(STATE.frames.length === 0) { alert("No recording found!"); return; }
+            STATE.replaying = true;
+            replayFrame = 0;
+            transformControl.detach();
+            scene.attach(mainGroup);
+            setBadge("REPLAYING", "play");
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            
+            if(STATE.simulating) {
+                STATE.progress += 0.0025;
+                if(STATE.progress > 1) STATE.progress = 1;
+                updateAnimation(STATE.progress);
+                const crashed = checkCollisions();
+                if(crashed) {
+                    STATE.simulating = false;
+                }
+            }
+            
+            if(STATE.replaying) {
+                if(replayFrame < STATE.frames.length) {
+                    const f = STATE.frames[replayFrame];
+                    mainGroup.position.copy(f.pos);
+                    mainGroup.quaternion.copy(f.quat);
+                    // Zero internal groups
+                    tiltGroup.rotation.set(0,0,0);
+                    standGroup.rotation.set(0,0,0);
+                    replayFrame++;
+                    checkCollisions();
+                } else {
+                    replayFrame = 0;
+                }
+            }
+
+            if(STATE.recording) {
+                mainGroup.updateMatrixWorld();
+                const pos = new THREE.Vector3();
+                const quat = new THREE.Quaternion();
+                mainGroup.getWorldPosition(pos);
+                mainGroup.getWorldQuaternion(quat);
+                STATE.frames.push({ pos: pos, quat: quat });
+            }
+            
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // UI
+        function setBadge(txt, type) {
+            const b = document.getElementById('statusBadge');
+            if(b) {
+                b.innerText = txt;
+                b.className = `status-badge status-${type}`;
+            }
+        }
+
+        function enterManualMode() {
+            STATE.simulating = false;
+            document.getElementById('technique-select').value = 'manual';
+            STATE.technique = 'manual';
+            setBadge("MANUAL CONTROL", "manual");
+        }
+
+        function applyFlatMoveConstraints() {
+            if(transformControl.mode === 'translate') {
+                transformControl.showY = !flatMoveEnabled;
+            } else {
+                transformControl.showY = true;
+            }
+        }
+
+        function updateFlatMoveUI() {
+            const flatMoveBtn = document.getElementById('btn-flat-move');
+            if(!flatMoveBtn) return;
+            if(flatMoveEnabled) {
+                flatMoveBtn.className = "gizmo-btn active w-full";
+                flatMoveBtn.innerText = "FLAT MOVE ON";
+            } else {
+                flatMoveBtn.className = "gizmo-btn w-full";
+                flatMoveBtn.innerText = "FLAT MOVE OFF";
+            }
+        }
+
+        function updatePanelUI() {
+            const panelToggle = document.getElementById('panel-toggle');
+            const controlsPanel = document.querySelector('.controls-panel');
+            if(controlsPanel) {
+                controlsPanel.classList.toggle('collapsed', panelCollapsed);
+            }
+            if(panelToggle) {
+                panelToggle.innerText = panelCollapsed ? "SHOW CONTROLS" : "HIDE CONTROLS";
+            }
+        }
+
+        function updateInfoUI() {
+            const infoOverlay = document.getElementById('info-overlay');
+            const infoToggle = document.getElementById('btn-toggle-info');
+            const camHint = document.querySelector('.cam-hint');
+            if(infoOverlay) {
+                infoOverlay.classList.toggle('is-hidden', !infoVisible);
+            }
+            if(camHint) {
+                camHint.classList.toggle('is-hidden', !infoVisible);
+            }
+            if(infoToggle) {
+                infoToggle.className = infoVisible ? "gizmo-btn active" : "gizmo-btn";
+                infoToggle.innerText = infoVisible ? "INFO ON" : "INFO OFF";
+            }
+        }
+
+        function resetSim() {
+            STATE.simulating=false; STATE.progress=0; STATE.collision=false; STATE.replaying=false;
+            transformControl.detach();
+            lockedY = null;
+            scene.attach(mainGroup);
+            
+            mainGroup.rotation.set(0,0,0); tiltGroup.rotation.set(0,0,0); standGroup.rotation.set(0,0,0);
+            const H = STATE.hasLegs?STATE.height:STATE.height-STATE.legsHeight;
+            mainGroup.position.set(-3.5, H/2, 0);
+            
+            if(STATE.technique === 'manual') setBadge("MANUAL MODE", "manual");
+            else setBadge("READY", "ok");
+        }
+
+        const modelInput = document.getElementById('model-input');
+        const modelStatus = document.getElementById('model-status');
+        const modelReset = document.getElementById('btn-model-reset');
+        const flatMoveBtn = document.getElementById('btn-flat-move');
+        const infoToggle = document.getElementById('btn-toggle-info');
+        const panelToggle = document.getElementById('panel-toggle');
+        const pivotFreeBtn = document.getElementById('pivot-free');
+        const pivotCenterBtn = document.getElementById('pivot-center');
+        const pivotFrontLeftBtn = document.getElementById('pivot-front-left');
+        const pivotFrontRightBtn = document.getElementById('pivot-front-right');
+        const pivotBackLeftBtn = document.getElementById('pivot-back-left');
+        const pivotBackRightBtn = document.getElementById('pivot-back-right');
+
+        function clearCustomModel(showBadge = true) {
+            customModel = null;
+            customModelBaseSize = null;
+            if(modelInput) modelInput.value = "";
+            if(modelStatus) modelStatus.innerText = "Using generated sofa.";
+            buildSofa();
+            resetSim();
+            if(showBadge) setBadge("DEFAULT MODEL", "ok");
+        }
+
+        function loadCustomModel(file) {
+            const url = URL.createObjectURL(file);
+            if(modelStatus) modelStatus.innerText = "Loading model...";
+            gltfLoader.load(url, (gltf) => {
+                URL.revokeObjectURL(url);
+                customModel = gltf.scene;
+                const box = new THREE.Box3().setFromObject(customModel);
+                const size = new THREE.Vector3();
+                const center = new THREE.Vector3();
+                box.getSize(size);
+                if(size.x === 0 || size.y === 0 || size.z === 0) {
+                    clearCustomModel(false);
+                    setBadge("INVALID MODEL", "fail");
+                    return;
+                }
+                box.getCenter(center);
+                customModel.position.sub(center);
+                customModel.rotation.set(0,0,0);
+                customModelBaseSize = size.clone();
+
+                customModel.traverse((child) => {
+                    if(child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                        if(!child.userData.baseMaterial) {
+                            child.userData.baseMaterial = child.material;
+                        }
+                    }
+                });
+
+                if(modelStatus) modelStatus.innerText = file.name;
+                buildSofa();
+                resetSim();
+                setBadge("MODEL LOADED", "ok");
+            }, undefined, (error) => {
+                URL.revokeObjectURL(url);
+                console.error(error);
+                clearCustomModel(false);
+                setBadge("MODEL LOAD FAILED", "fail");
+                alert("Failed to load model.");
+            });
+        }
+
+        if(modelInput) {
+            modelInput.onchange = (event) => {
+                const file = event.target.files && event.target.files[0];
+                if(file) loadCustomModel(file);
+            };
+        }
+
+        if(modelReset) {
+            modelReset.onclick = () => clearCustomModel();
+        }
+
+        if(flatMoveBtn) {
+            flatMoveBtn.onclick = () => {
+                flatMoveEnabled = !flatMoveEnabled;
+                lockedY = null;
+                applyFlatMoveConstraints();
+                updateFlatMoveUI();
+            };
+        }
+
+        if(pivotFreeBtn) pivotFreeBtn.onclick = () => setActivePivot(null);
+        if(pivotCenterBtn) pivotCenterBtn.onclick = () => setActivePivot(4);
+        if(pivotFrontLeftBtn) pivotFrontLeftBtn.onclick = () => setActivePivot(2);
+        if(pivotFrontRightBtn) pivotFrontRightBtn.onclick = () => setActivePivot(3);
+        if(pivotBackLeftBtn) pivotBackLeftBtn.onclick = () => setActivePivot(0);
+        if(pivotBackRightBtn) pivotBackRightBtn.onclick = () => setActivePivot(1);
+
+        if(infoToggle) {
+            infoToggle.onclick = () => {
+                infoVisible = !infoVisible;
+                updateInfoUI();
+            };
+        }
+
+        if(panelToggle) {
+            panelToggle.onclick = () => {
+                panelCollapsed = !panelCollapsed;
+                updatePanelUI();
+            };
+        }
+
+        applyFlatMoveConstraints();
+        updateFlatMoveUI();
+        updatePanelUI();
+        updateInfoUI();
+        
+        document.getElementById('mode-translate').onclick = () => { setTransformMode('translate'); };
+        document.getElementById('mode-rotate').onclick = () => { setTransformMode('rotate'); };
+        
+        document.getElementById('btn-legs').onclick = () => {
+            STATE.hasLegs = !STATE.hasLegs;
+            document.getElementById('legs-status').innerText = STATE.hasLegs ? "ON" : "OFF (-6cm)";
+            document.getElementById('legs-status').className = STATE.hasLegs ? "text-green-400" : "text-yellow-400";
+            buildSofa();
+        };
+        document.getElementById('btn-cushions').onclick = () => {
+            STATE.hasCushions = !STATE.hasCushions;
+            document.getElementById('cushions-status').innerText = STATE.hasCushions ? "ON" : "OFF (-10cm)";
+            document.getElementById('cushions-status').className = STATE.hasCushions ? "text-green-400" : "text-yellow-400";
+            buildSofa();
+        };
+        document.getElementById('technique-select').onchange = (e) => { STATE.technique = e.target.value; resetSim(); };
+        document.getElementById('btn-reset').onclick = resetSim;
+        document.getElementById('btn-sim').onclick = () => {
+            if(STATE.technique === 'manual') {
+                alert("Select an Auto-Pilot technique from the dropdown to play animation.");
+                return;
+            }
+            if(STATE.collision || STATE.progress===1) resetSim();
+            STATE.simulating = !STATE.simulating;
+            document.getElementById('btn-sim').innerText = STATE.simulating ? "PAUSE" : "PLAY ANIMATION";
+        };
+        ['len','h','d'].forEach(k => {
+            document.getElementById('param-'+k).oninput = (e) => {
+                const map = {'len':'len', 'h':'height', 'd':'depth'};
+                STATE[map[k]] = parseFloat(e.target.value);
+                document.getElementById('val-'+k).innerText = STATE[map[k]] + "m";
+                buildSofa();
+            };
+        });
+
+        buildSofa();
+    </script>
+</body>
 </html>
