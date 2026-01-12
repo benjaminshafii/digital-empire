@@ -12,6 +12,7 @@
     "buffer": "^6.0.3",
     "fuse.js": "^7.0.0",
     "gray-matter": "^4.0.3",
+    "lucide-react": "^0.474.0",
     "marked": "^15.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

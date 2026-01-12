@@ -17,43 +17,10 @@ function parseHash(): Route {
   return { type: "list" };
 }
 
-function RecipeShell({ children }: { children: ReactNode }) {
+function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-outer-bg text-ink flex justify-center items-start py-8 px-4">
-      <svg style={{ display: "none" }} aria-hidden="true">
-        <defs>
-          <filter id="whiteDots" x="0%" y="0%" width="100%" height="100%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="3" seed="5" result="noise" />
-            <feColorMatrix
-              in="noise"
-              type="matrix"
-              values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 100 -80"
-              result="dots"
-            />
-          </filter>
-
-          <filter id="ink-bleed" x="-20%" y="-20%" width="140%" height="140%">
-            <feMorphology operator="dilate" radius="0.15" in="SourceGraphic" result="thickened" />
-            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" result="noise" />
-            <feDisplacementMap in="thickened" in2="noise" scale="0.5" xChannelSelector="R" yChannelSelector="G" />
-          </filter>
-
-          <filter id="ink-heavy" x="-10%" y="-10%" width="120%" height="120%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="3" result="noise" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.0" xChannelSelector="R" yChannelSelector="G" />
-          </filter>
-        </defs>
-      </svg>
-
-      <div
-        className="relative w-full max-w-4xl bg-white border-3 border-ink-black overflow-hidden"
-        style={{ filter: "contrast(110%) brightness(100%)", transform: "rotate(-0.2deg)" }}
-      >
-        <div className="paper-texture" />
-        <div className="speckles-black" />
-        <div className="speckles-white" />
-        <div className="relative z-10">{children}</div>
-      </div>
+    <div className="min-h-screen bg-stone-50 text-stone-900 font-sans antialiased selection:bg-green-100 selection:text-green-900">
+      {children}
     </div>
   );
 }
@@ -81,29 +48,30 @@ export default function App() {
     const recipe = getRecipeBySlug(route.slug);
     if (!recipe) {
       return (
-        <RecipeShell>
-          <div className="p-10 text-center">
-            <h1 className="font-sans font-black text-2xl mb-4">Recipe not found</h1>
+        <AppShell>
+          <div className="min-h-screen flex flex-col items-center justify-center text-center px-6">
+            <h1 className="text-2xl font-serif font-medium text-stone-900 mb-2">Recipe not found</h1>
             <button
+              type="button"
               onClick={navigateToList}
-              className="font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink underline"
+              className="text-sm text-stone-500 hover:text-stone-700 underline"
             >
               Back to recipes
             </button>
           </div>
-        </RecipeShell>
+        </AppShell>
       );
     }
     return (
-      <RecipeShell>
+      <AppShell>
         <RecipeDetail recipe={recipe} onBack={navigateToList} />
-      </RecipeShell>
+      </AppShell>
     );
   }
 
   return (
-    <RecipeShell>
+    <AppShell>
       <RecipeList onSelectRecipe={navigateToRecipe} />
-    </RecipeShell>
+    </AppShell>
   );
 }

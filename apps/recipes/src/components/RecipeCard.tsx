@@ -1,5 +1,6 @@
 import type { Recipe } from "../lib/types";
-import { formatTime } from "../lib/types";
+import { formatAmount, formatTime } from "../lib/types";
+import { ChevronRight, Clock } from "lucide-react";
 
 interface RecipeCardProps {
   recipe: Recipe;
@@ -8,37 +9,45 @@ interface RecipeCardProps {
 }
 
 export function RecipeCard({ recipe, index, onClick }: RecipeCardProps) {
+  const totalMinutes = recipe.totalTime ?? (recipe.prepTime ?? 0) + (recipe.cookTime ?? 0);
+  const totalTimeLabel = totalMinutes ? formatTime(totalMinutes) : null;
+  const formattedYield = formatAmount(recipe.yield.amount);
+  const parsedYield = Number.parseFloat(formattedYield);
+  const yieldLabel = Number.isInteger(recipe.yield.amount)
+    ? recipe.yield.amount.toString()
+    : Number.isNaN(parsedYield)
+      ? formattedYield
+      : parsedYield.toString();
+
   return (
-    <button onClick={onClick} className="recipe-card w-full cursor-pointer group">
-      <div className="flex items-start gap-3">
-        <span className="font-mono text-xs text-ink-muted pt-0.5 font-bold ink-bleed">
-          {String(index + 1).padStart(2, "0")}
-        </span>
+    <button type="button" onClick={onClick} className="recipe-card group">
+      <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <h3 className="font-sans font-black text-lg md:text-xl tight-tracking leading-tight group-hover:underline decoration-2 underline-offset-2 ink-bleed">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-400">
+            {String(index + 1).padStart(2, "0")}
+          </span>
+          <h3 className="text-xl font-serif font-medium text-stone-900 mt-2 group-hover:underline decoration-stone-300">
             {recipe.title}
           </h3>
-          {recipe.description && (
-            <p className="text-sm text-ink-muted mt-2 line-clamp-2">{recipe.description}</p>
-          )}
-          <div className="flex items-center gap-3 mt-3 flex-wrap">
-            {recipe.totalTime && (
-              <span className="time-badge">Total {formatTime(recipe.totalTime)}</span>
+          {recipe.description && <p className="text-stone-500 mt-2 line-clamp-2">{recipe.description}</p>}
+          <div className="flex flex-wrap items-center gap-3 mt-4">
+            {totalTimeLabel && (
+              <span className="inline-flex items-center gap-1 text-xs text-stone-500">
+                <Clock size={14} className="text-stone-400" />
+                {totalTimeLabel}
+              </span>
             )}
-            {recipe.tags.length > 0 && (
-              <div className="flex gap-1.5 flex-wrap">
-                {recipe.tags.slice(0, 3).map((tag) => (
-                  <span key={tag} className="tag">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
+            <span className="text-xs text-stone-400">
+              {yieldLabel} {recipe.yield.unit}
+            </span>
+            {recipe.tags.slice(0, 2).map((tag) => (
+              <span key={tag} className="tag">
+                {tag}
+              </span>
+            ))}
           </div>
         </div>
-        <span className="font-mono text-[10px] text-ink-muted opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-          OPEN
-        </span>
+        <ChevronRight size={20} className="text-stone-300 group-hover:text-stone-500 transition" />
       </div>
     </button>
   );

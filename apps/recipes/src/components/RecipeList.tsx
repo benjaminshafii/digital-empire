@@ -19,93 +19,74 @@ export function RecipeList({ onSelectRecipe }: RecipeListProps) {
   }, [searchQuery, selectedTag]);
 
   return (
-    <div>
-      <header className="bg-black text-white p-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between border-b-3 border-ink-black ink-heavy">
+    <div className="pb-24">
+      <header className="sticky top-0 bg-stone-50/95 backdrop-blur-md z-10 px-6 py-4 flex items-center justify-between border-b border-stone-100/70">
         <div>
-          <span className="font-mono text-[10px] uppercase tracking-widest text-white/70">Family Archive</span>
-          <h1 className="text-3xl md:text-5xl font-black tight-tracking leading-tight uppercase mix-blend-screen">
-            Family Recipes
-          </h1>
+          <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-stone-400">Kitchen Log</span>
+          <h1 className="text-3xl font-serif font-medium text-stone-900">Family Recipes</h1>
         </div>
-        <div className="flex flex-col items-start md:items-end">
-          <div className="flex gap-2 mb-2">
-            <div className="w-1.5 h-1.5 bg-white rounded-full" />
-            <div className="w-1.5 h-1.5 bg-white rounded-full" />
-            <div className="w-1.5 h-1.5 bg-white rounded-full" />
-            <div className="w-1.5 h-1.5 bg-white rounded-full" />
-          </div>
-          <span className="text-xs font-medium tracking-wide mix-blend-screen uppercase">Kitchen Notes</span>
-        </div>
+        <span className="text-xs font-semibold text-stone-400">
+          {recipeCount.toString().padStart(3, "0")} recipes
+        </span>
       </header>
 
-      <div className="grid md:grid-cols-[160px_1fr] border-b-3 border-ink-black bg-gray-50">
-        <div className="p-4 border-b-3 md:border-b-0 md:border-r-3 border-ink-black flex items-center">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-gray-700">
-            {recipeCount.toString().padStart(3, "0")} Recipes
-          </span>
-        </div>
-        <div className="p-4">
+      <main className="px-6 pt-6">
+        <div className="mb-6">
           <input
             type="text"
             placeholder="Search recipes..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(event) => setSearchQuery(event.target.value)}
             className="search-input"
           />
         </div>
-      </div>
 
-      {allTags.length > 0 && (
-        <div className="border-b-3 border-ink-black bg-white">
-          <div className="p-4 flex flex-wrap gap-2">
+        {allTags.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 mb-6">
             <button
+              type="button"
               onClick={() => setSelectedTag("")}
-              className={`tag cursor-pointer transition-colors ${
-                !selectedTag ? "bg-black text-white" : "hover:bg-black/10"
-              }`}
+              className={
+                "px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-semibold transition whitespace-nowrap " +
+                (!selectedTag
+                  ? "bg-stone-900 text-white"
+                  : "bg-white text-stone-500 border border-stone-200 hover:bg-stone-100")
+              }
             >
               All
             </button>
             {allTags.map((tag) => (
               <button
                 key={tag}
+                type="button"
                 onClick={() => setSelectedTag(tag === selectedTag ? "" : tag)}
-                className={`tag cursor-pointer transition-colors ${
-                  tag === selectedTag ? "bg-black text-white" : "hover:bg-black/10"
-                }`}
+                className={
+                  "px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-semibold transition whitespace-nowrap " +
+                  (tag === selectedTag
+                    ? "bg-stone-900 text-white"
+                    : "bg-white text-stone-500 border border-stone-200 hover:bg-stone-100")
+                }
               >
                 {tag}
               </button>
             ))}
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="w-full py-2 border-b-3 border-ink-black text-center bg-gray-50">
-        <span className="text-xs font-bold tracking-wide ink-bleed uppercase">Recipe Log</span>
-      </div>
-
-      <div className="dotted-line" />
-
-      {filteredRecipes.length > 0 ? (
-        <ul className="divide-y divide-gray-300">
-          {filteredRecipes.map((recipe, index) => (
-            <li key={recipe.slug}>
-              <RecipeCard
-                recipe={recipe}
-                index={index}
-                onClick={() => onSelectRecipe(recipe.slug)}
-              />
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="text-center py-12">
-          <p className="text-ink-muted font-mono text-[10px] uppercase tracking-widest">
-            No recipes found
-          </p>
-        </div>
-      )}
+        {filteredRecipes.length > 0 ? (
+          <ul className="space-y-4">
+            {filteredRecipes.map((recipe, index) => (
+              <li key={recipe.slug}>
+                <RecipeCard recipe={recipe} index={index} onClick={() => onSelectRecipe(recipe.slug)} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-stone-400 font-medium">No recipes found</p>
+          </div>
+        )}
+      </main>
     </div>
   );
 }

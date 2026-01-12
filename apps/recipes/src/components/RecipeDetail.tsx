@@ -1,108 +1,386 @@
-import { useCallback, useMemo, useState } from "react";
-import type { Recipe, ScaledIngredient } from "../lib/types";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Recipe } from "../lib/types";
 import { formatAmount, formatTime } from "../lib/types";
+import {
+  ArrowLeft,
+  ChefHat,
+  Check,
+  ChevronRight,
+  Clock,
+  Flame,
+  Heart,
+  Pause,
+  Play,
+  RotateCcw,
+  Users,
+  X,
+} from "lucide-react";
 
 interface RecipeDetailProps {
   recipe: Recipe;
   onBack: () => void;
 }
 
-type IngredientOverrideMap = Record<string, number>;
-
-type ComponentView = {
+type ScaledIngredient = {
+  key: string;
   name: string;
-  description?: string;
-  steps: string[];
-  scaledIngredients: ScaledIngredient[];
-  totalGrams: number;
-  targetGrams?: number;
+  unit: string;
+  prep?: string;
+  amount: number;
+  scaledAmount: number;
 };
 
-const buildIngredientKey = (componentIndex: number, ingredientId: string): string => {
-  return `${componentIndex}:${ingredientId}`;
+type IngredientGroup = {
+  name: string;
+  ingredients: ScaledIngredient[];
 };
 
-const buildStepKey = (componentIndex: number, stepIndex: number): string => {
-  return `${componentIndex}:${stepIndex}`;
+type CookStep = {
+  key: string;
+  title: string;
+  contentHtml: string;
+  previewText: string;
+  durationSeconds: number;
+};
+
+type TimerProps = {
+  duration: number;
+  isRunning: boolean;
+  onToggle: (nextState: boolean) => void;
+  onReset: () => void;
+};
+
+type IngredientRowProps = {
+  ingredient: ScaledIngredient;
+  isChecked: boolean;
+  onToggle: () => void;
+};
+
+const stripHtml = (value: string): string => {
+  return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+};
+
+const removeLeadingTitle = (value: string): string => {
+  return value.replace(/^\s*<strong>.*?<\/strong>\s*[-–—:]?\s*/i, "");
+};
+
+const extractStepTitle = (value: string, fallback: string): string => {
+  const match = value.match(/<strong>(.*?)<\/strong>/i);
+  if (match?.[1]) {
+    const cleaned = stripHtml(match[1]);
+    if (cleaned) return cleaned;
+  }
+  const text = stripHtml(value);
+  if (text) {
+    const sentence = text.split(/[.!?]/)[0]?.trim();
+    if (sentence) return sentence;
+  }
+  return fallback;
+};
+
+const formatScaledAmount = (amount: number): string => {
+  const formatted = formatAmount(amount);
+  const parsed = Number.parseFloat(formatted);
+  return Number.isNaN(parsed) ? formatted : parsed.toString();
+};
+
+const Timer = ({ duration, isRunning, onToggle, onReset }: TimerProps) => {
+  const [timeLeft, setTimeLeft] = useState(duration);
+
+  useEffect(() => {
+    let interval: number | undefined;
+    if (isRunning && timeLeft > 0) {
+      interval = window.setInterval(() => setTimeLeft((current) => current - 1), 1000);
+    } else if (timeLeft === 0 && isRunning) {
+      onToggle(false);
+    }
+    return () => {
+      if (interval) window.clearInterval(interval);
+    };
+  }, [isRunning, timeLeft, onToggle]);
+
+  useEffect(() => {
+    setTimeLeft(duration);
+    onToggle(false);
+  }, [duration, onToggle]);
+
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  };
+
+  return (
+    <div className="flex items-center gap-4 bg-stone-100 rounded-full px-4 py-2 self-start">
+      <span className="font-mono font-medium text-stone-700 w-12 text-center">
+        {formatTime(timeLeft)}
+      </span>
+      <div className="w-px h-4 bg-stone-300" />
+      <button type="button" onClick={() => onToggle(!isRunning)} className="text-stone-900">
+        {isRunning ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setTimeLeft(duration);
+          onReset();
+        }}
+        className="text-stone-400 hover:text-stone-600 transition"
+      >
+        <RotateCcw size={16} />
+      </button>
+    </div>
+  );
+};
+
+const IngredientRow = ({ ingredient, isChecked, onToggle }: IngredientRowProps) => {
+  const amountLabel = formatScaledAmount(ingredient.scaledAmount);
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={
+        "group flex w-full items-center justify-between p-4 rounded-xl cursor-pointer border transition-all duration-300 " +
+        (isChecked
+          ? "bg-stone-50 border-transparent"
+          : "bg-white border-stone-100 shadow-sm hover:shadow-md hover:border-stone-200")
+      }
+    >
+      <div className="flex items-center gap-4">
+        <div
+          className={
+            "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 " +
+            (isChecked
+              ? "border-green-600 bg-green-600 scale-90"
+              : "border-stone-200 group-hover:border-green-500")
+          }
+        >
+          {isChecked && <Check size={14} className="text-white" />}
+        </div>
+        <div className="flex flex-col text-left">
+          <span
+            className={
+              "text-base transition-all duration-300 " +
+              (isChecked ? "text-stone-400 line-through decoration-stone-300" : "text-stone-900 font-medium")
+            }
+          >
+            {ingredient.name}
+          </span>
+          {ingredient.prep && (
+            <span className={isChecked ? "text-stone-300 text-xs" : "text-stone-400 text-xs"}>
+              {ingredient.prep}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <span
+        className={
+          "font-mono text-sm transition-colors duration-300 " +
+          (isChecked ? "text-stone-300" : "text-stone-500 font-semibold")
+        }
+      >
+        {amountLabel} <span className="text-xs font-sans font-normal text-stone-400">{ingredient.unit}</span>
+      </span>
+    </button>
+  );
+};
+
+type CookModeProps = {
+  steps: CookStep[];
+  onClose: () => void;
+};
+
+const CookMode = ({ steps, onClose }: CookModeProps) => {
+  const [activeStep, setActiveStep] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+
+  useEffect(() => {
+    setActiveStep(0);
+    setIsTimerRunning(false);
+  }, [steps]);
+
+  const step = steps[activeStep];
+  const isLastStep = activeStep === steps.length - 1;
+
+  if (!step) {
+    return (
+      <div className="fixed inset-0 bg-stone-50 z-50 flex flex-col">
+        <div className="flex justify-between items-center p-6 border-b border-stone-200">
+          <span className="text-xs font-bold text-stone-400 uppercase tracking-widest">Cooking Mode</span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-10 h-10 rounded-full bg-stone-200 flex items-center justify-center text-stone-600 hover:bg-stone-300 transition"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        <div className="flex-1 flex items-center justify-center text-stone-500">No steps yet.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 bg-stone-50 z-50 flex flex-col">
+      <div className="flex justify-between items-center p-6 border-b border-stone-200">
+        <div className="flex flex-col">
+          <span className="text-xs font-bold text-stone-400 uppercase tracking-widest">
+            Step {activeStep + 1} of {steps.length}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-10 h-10 rounded-full bg-stone-200 flex items-center justify-center text-stone-600 hover:bg-stone-300 transition"
+        >
+          <X size={20} />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-6 flex flex-col">
+        <h2 className="text-3xl font-serif font-medium text-stone-900 mb-6 mt-4">{step.title}</h2>
+
+        {step.durationSeconds > 0 && (
+          <div className="mb-8">
+            <Timer
+              duration={step.durationSeconds}
+              isRunning={isTimerRunning}
+              onToggle={setIsTimerRunning}
+              onReset={() => setIsTimerRunning(false)}
+            />
+          </div>
+        )}
+
+        <div
+          className="text-xl leading-relaxed text-stone-700 font-medium prose prose-stone max-w-none"
+          dangerouslySetInnerHTML={{ __html: step.contentHtml }}
+        />
+      </div>
+
+      <div className="p-6 bg-white border-t border-stone-200 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+        <div className="flex gap-4">
+          <button
+            type="button"
+            disabled={activeStep === 0}
+            onClick={() => {
+              setActiveStep((current) => Math.max(0, current - 1));
+              setIsTimerRunning(false);
+            }}
+            className="flex-1 py-4 rounded-xl font-bold text-stone-500 bg-stone-100 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-stone-200 transition"
+          >
+            Back
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (isLastStep) {
+                onClose();
+              } else {
+                setActiveStep((current) => Math.min(steps.length - 1, current + 1));
+                setIsTimerRunning(false);
+              }
+            }}
+            className={
+              "flex-[2] py-4 rounded-xl font-bold text-white shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-[0.98] " +
+              (isLastStep ? "bg-green-700 hover:bg-green-800" : "bg-stone-900 hover:bg-stone-800")
+            }
+          >
+            {isLastStep ? "Finish Cooking" : "Next Step"}
+            {!isLastStep && <ChevronRight size={20} />}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
-  const [batchMultiplier, setBatchMultiplier] = useState(1);
-  const [ingredientOverrides, setIngredientOverrides] = useState<IngredientOverrideMap>({});
-  const [lastEditedKey, setLastEditedKey] = useState<string | null>(null);
+  const baseServings = Math.max(1, recipe.yield.amount || 1);
+  const [servings, setServings] = useState(baseServings);
+  const [mode, setMode] = useState<"overview" | "cook">("overview");
   const [checkedIngredients, setCheckedIngredients] = useState<Set<string>>(new Set());
-  const [checkedSteps, setCheckedSteps] = useState<Set<string>>(new Set());
 
-  const targetTotalGrams = recipe.batch.totalGrams * batchMultiplier;
+  useEffect(() => {
+    setServings(baseServings);
+    setMode("overview");
+    setCheckedIngredients(new Set());
+  }, [recipe.slug, baseServings]);
 
-  const componentViews = useMemo<ComponentView[]>(() => {
-    const baseAmounts: Record<string, number> = {};
+  const servingsRatio = servings / baseServings;
+
+  const ingredientGroups = useMemo<IngredientGroup[]>(() => {
+    return recipe.components.map((component, componentIndex) => ({
+      name: component.name,
+      ingredients: component.ingredients.map((ingredient) => ({
+        key: `${componentIndex}:${ingredient.id}`,
+        name: ingredient.name,
+        unit: ingredient.unit,
+        prep: ingredient.prep,
+        amount: ingredient.amount,
+        scaledAmount: ingredient.amount * servingsRatio,
+      })),
+    }));
+  }, [recipe.components, servingsRatio]);
+
+  const scaledIngredients = useMemo(() => ingredientGroups.flatMap((group) => group.ingredients), [
+    ingredientGroups,
+  ]);
+
+  const scaleStepText = useCallback(
+    (html: string): string => {
+      let result = html;
+      scaledIngredients.forEach((ingredient) => {
+        const baseAmount = ingredient.amount;
+        const scaledAmount = formatScaledAmount(ingredient.scaledAmount);
+        const unit = ingredient.unit;
+        const name = ingredient.name;
+        const patterns = [
+          new RegExp(`\\*\\*${baseAmount}${unit}\\s+${name}\\*\\*`, "gi"),
+          new RegExp(`\\*\\*${baseAmount}\\s*${unit}\\s+${name}\\*\\*`, "gi"),
+          new RegExp(`<strong>${baseAmount}${unit}\\s+${name}</strong>`, "gi"),
+          new RegExp(`<strong>${baseAmount}\\s*${unit}\\s+${name}</strong>`, "gi"),
+        ];
+        patterns.forEach((pattern) => {
+          result = result.replace(
+            pattern,
+            `<strong class="text-green-700 font-semibold">${scaledAmount}${unit} ${name}</strong>`
+          );
+        });
+      });
+      return result;
+    },
+    [scaledIngredients]
+  );
+
+  const totalMinutes = useMemo(() => {
+    if (recipe.totalTime) return recipe.totalTime;
+    return (recipe.prepTime ?? 0) + (recipe.cookTime ?? 0);
+  }, [recipe.totalTime, recipe.prepTime, recipe.cookTime]);
+
+  const cookSteps = useMemo<CookStep[]>(() => {
+    const steps: CookStep[] = [];
+    const stepCount = recipe.components.reduce((total, component) => total + (component.steps?.length ?? 0), 0);
+    const durationSeconds = stepCount && totalMinutes ? Math.round((totalMinutes * 60) / stepCount) : 0;
 
     recipe.components.forEach((component, componentIndex) => {
-      component.ingredients.forEach((ingredient) => {
-        const key = buildIngredientKey(componentIndex, ingredient.id);
-        baseAmounts[key] = ingredient.amount * batchMultiplier;
+      (component.steps ?? []).forEach((step, stepIndex) => {
+        const title = extractStepTitle(step, `${component.name} Step ${stepIndex + 1}`);
+        const scaledHtml = scaleStepText(step);
+        const contentHtml = removeLeadingTitle(scaledHtml);
+        steps.push({
+          key: `${componentIndex}:${stepIndex}`,
+          title,
+          contentHtml,
+          previewText: stripHtml(contentHtml),
+          durationSeconds,
+        });
       });
     });
 
-    let ratio = 1;
-    if (lastEditedKey) {
-      const baseAmount = baseAmounts[lastEditedKey];
-      const overrideAmount = ingredientOverrides[lastEditedKey];
-      if (typeof baseAmount === "number" && typeof overrideAmount === "number" && baseAmount > 0) {
-        ratio = overrideAmount / baseAmount;
-      }
-    }
-
-    if (!Number.isFinite(ratio) || ratio <= 0) {
-      ratio = 1;
-    }
-
-    return recipe.components.map((component, componentIndex) => {
-      const scaledIngredients = component.ingredients.map((ingredient) => {
-        const key = buildIngredientKey(componentIndex, ingredient.id);
-        const overrideAmount = ingredientOverrides[key];
-        const baseAmount = baseAmounts[key] ?? ingredient.amount * batchMultiplier;
-        const scaledAmount = overrideAmount ?? baseAmount * ratio;
-        return {
-          ...ingredient,
-          scaledAmount,
-        };
-      });
-
-      const totalGrams = scaledIngredients.reduce(
-        (total, ingredient) => total + ingredient.scaledAmount,
-        0
-      );
-
-      const targetGrams = component.yieldGrams
-        ? component.yieldGrams * batchMultiplier
-        : undefined;
-
-      return {
-        name: component.name,
-        description: component.description,
-        steps: component.steps ?? [],
-        scaledIngredients,
-        totalGrams,
-        targetGrams,
-      };
-    });
-  }, [recipe.components, ingredientOverrides, batchMultiplier, lastEditedKey]);
-
-  const currentTotalGrams = useMemo(() => {
-    return componentViews.reduce((total, component) => total + component.totalGrams, 0);
-  }, [componentViews]);
-  const hasAdjustments = batchMultiplier !== 1 || Object.keys(ingredientOverrides).length > 0;
-  const hasTime = recipe.prepTime || recipe.cookTime || recipe.totalTime;
-  const yieldAmountLabel = Number.isInteger(recipe.yield.amount)
-    ? recipe.yield.amount.toString()
-    : formatAmount(recipe.yield.amount);
-
-  const resetSimulation = useCallback(() => {
-    setBatchMultiplier(1);
-    setIngredientOverrides({});
-  }, []);
+    return steps;
+  }, [recipe.components, scaleStepText, totalMinutes]);
 
   const toggleIngredient = useCallback((key: string) => {
     setCheckedIngredients((prev) => {
@@ -116,316 +394,200 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
     });
   }, []);
 
-  const toggleStep = useCallback((key: string) => {
-    setCheckedSteps((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
-    });
+  const resetIngredients = useCallback(() => {
+    setCheckedIngredients(new Set());
   }, []);
 
-  const handleBatchChange = useCallback((value: string) => {
-    const parsed = Number.parseFloat(value);
-    if (!Number.isNaN(parsed) && parsed > 0) {
-      setBatchMultiplier(parsed);
-    }
-  }, []);
+  const difficultyLabel = useMemo(() => {
+    if (!totalMinutes) return "Flexible";
+    if (totalMinutes <= 30) return "Easy";
+    if (totalMinutes <= 60) return "Comfort";
+    return "Slow";
+  }, [totalMinutes]);
 
-  const handleIngredientChange = useCallback(
-    (componentIndex: number, ingredientId: string, value: string) => {
-      const key = buildIngredientKey(componentIndex, ingredientId);
-      if (value.trim() === "") {
-        setIngredientOverrides((prev) => {
-          const next = { ...prev };
-          delete next[key];
-          const remainingKeys = Object.keys(next);
-          setLastEditedKey((current) => {
-            if (current !== key) return current;
-            return remainingKeys.length > 0 ? remainingKeys[0] : null;
-          });
-          return next;
-        });
-        return;
-      }
-
-      const parsed = Number.parseFloat(value);
-      if (Number.isNaN(parsed)) {
-        return;
-      }
-
-      setIngredientOverrides((prev) => ({
-        ...prev,
-        [key]: parsed,
-      }));
-      setLastEditedKey(key);
-    },
-    []
-  );
-
-  const scaleStepText = useCallback(
-    (html: string, scaledIngredients: ScaledIngredient[]): string => {
-      let result = html;
-      scaledIngredients.forEach((ingredient) => {
-        const patterns = [
-          new RegExp(
-            `\\*\\*${ingredient.amount}${ingredient.unit}\\s+${ingredient.name}\\*\\*`,
-            "gi"
-          ),
-          new RegExp(
-            `\\*\\*${ingredient.amount}\\s*${ingredient.unit}\\s+${ingredient.name}\\*\\*`,
-            "gi"
-          ),
-          new RegExp(
-            `<strong>${ingredient.amount}${ingredient.unit}\\s+${ingredient.name}</strong>`,
-            "gi"
-          ),
-          new RegExp(
-            `<strong>${ingredient.amount}\\s*${ingredient.unit}\\s+${ingredient.name}</strong>`,
-            "gi"
-          ),
-        ];
-        patterns.forEach((pattern) => {
-          result = result.replace(
-            pattern,
-            `<strong class="text-accent-muted">${formatAmount(ingredient.scaledAmount)}${ingredient.unit} ${ingredient.name}</strong>`
-          );
-        });
-      });
-      return result;
-    },
-    []
-  );
+  const totalTimeLabel = totalMinutes ? formatTime(totalMinutes) : "Flexible";
+  const cookTimeLabel = recipe.cookTime ? formatTime(recipe.cookTime) : null;
+  const hasMultipleComponents = ingredientGroups.length > 1;
+  const servingsLabel = formatScaledAmount(servings);
 
   return (
-    <div>
-      <header className="bg-black text-white p-5 border-b-3 border-ink-black ink-heavy">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="flex-1">
+    <div className="relative">
+      {mode === "overview" && (
+        <div className="pb-28">
+          <header className="sticky top-0 bg-stone-50/95 backdrop-blur-md z-10 px-6 py-4 flex justify-between items-center border-b border-stone-100/70">
             <button
+              type="button"
               onClick={onBack}
-              className="font-mono text-[10px] uppercase tracking-widest text-white/70 hover:text-white transition-colors inline-flex items-center gap-2 mb-4"
+              className="p-2 -ml-2 rounded-full hover:bg-stone-100 transition text-stone-600"
             >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              Back to recipes
+              <ArrowLeft size={24} />
             </button>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black tight-tracking leading-tight uppercase text-balance mix-blend-screen">
-              {recipe.title}
-            </h1>
-          </div>
-          <div className="flex flex-col items-start md:items-end">
-            <div className="flex gap-2 mb-2">
-              <div className="w-1.5 h-1.5 bg-white rounded-full" />
-              <div className="w-1.5 h-1.5 bg-white rounded-full" />
-              <div className="w-1.5 h-1.5 bg-white rounded-full" />
-              <div className="w-1.5 h-1.5 bg-white rounded-full" />
-            </div>
-            <span className="text-xs font-medium tracking-wide mix-blend-screen uppercase">Kitchen Log</span>
-          </div>
-        </div>
-      </header>
+            <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-stone-400">Kitchen Log</span>
+            <button type="button" className="p-2 -mr-2 rounded-full hover:bg-stone-100 transition text-stone-600">
+              <Heart size={22} />
+            </button>
+          </header>
 
-      {recipe.image && (
-        <div className="border-b-3 border-ink-black">
-          <div className="aspect-square bg-ink/5 overflow-hidden max-w-[520px] mx-auto">
-            <img src={recipe.image} alt={recipe.title} className="w-full h-full object-cover" />
+          <main className="px-6 pt-8">
+            {recipe.image && (
+              <div className="mb-8 overflow-hidden rounded-3xl border border-stone-100 shadow-sm">
+                <img src={recipe.image} alt={recipe.title} className="w-full h-64 object-cover" />
+              </div>
+            )}
+
+            <div className="mb-8">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="px-2 py-1 bg-orange-100 text-orange-700 text-[10px] font-bold uppercase tracking-wide rounded-md">
+                  {difficultyLabel}
+                </span>
+                {cookTimeLabel && (
+                  <span className="text-xs text-stone-400 font-medium flex items-center gap-1">
+                    <Flame size={12} /> {cookTimeLabel}
+                  </span>
+                )}
+              </div>
+              <h1 className="text-4xl font-serif font-medium leading-[1.1] mb-3 text-stone-900 tracking-tight">
+                {recipe.title}
+              </h1>
+              {recipe.description && (
+                <p className="text-stone-500 text-lg leading-relaxed font-light">{recipe.description}</p>
+              )}
+            </div>
+
+            <div className="flex gap-3 mb-10 overflow-x-auto no-scrollbar pb-2">
+              <div className="flex-shrink-0 flex items-center gap-3 bg-white px-5 py-3 rounded-full shadow-sm border border-stone-100">
+                <Clock size={18} className="text-stone-400" />
+                <div className="flex flex-col leading-none">
+                  <span className="text-xs text-stone-400 font-bold uppercase tracking-wider">Total</span>
+                  <span className="text-sm font-semibold text-stone-700">{totalTimeLabel}</span>
+                </div>
+              </div>
+
+              <div className="flex-shrink-0 flex items-center gap-4 bg-white px-5 py-3 rounded-full shadow-sm border border-stone-100">
+                <Users size={18} className="text-stone-400" />
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setServings((current) => Math.max(1, current - 1))}
+                    className="w-6 h-6 flex items-center justify-center rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200 active:scale-95 transition"
+                  >
+                    -
+                  </button>
+                  <div className="flex flex-col items-center leading-none">
+                    <span className="text-base font-bold w-6 text-center text-stone-800">{servingsLabel}</span>
+                    <span className="text-[10px] uppercase tracking-wide text-stone-400">
+                      {recipe.yield.unit}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setServings((current) => current + 1)}
+                    className="w-6 h-6 flex items-center justify-center rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200 active:scale-95 transition"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <section className="mb-12">
+              <div className="flex justify-between items-end mb-6">
+                <h3 className="text-xl font-serif font-medium text-stone-800">Ingredients</h3>
+                {checkedIngredients.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={resetIngredients}
+                    className="text-xs font-bold text-green-700 tracking-wider uppercase hover:opacity-70 transition"
+                  >
+                    Reset List
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-6">
+                {ingredientGroups.map((group) => (
+                  <div key={group.name} className="space-y-3">
+                    {hasMultipleComponents && (
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">
+                        {group.name}
+                      </p>
+                    )}
+                    {group.ingredients.map((ingredient) => (
+                      <IngredientRow
+                        key={ingredient.key}
+                        ingredient={ingredient}
+                        isChecked={checkedIngredients.has(ingredient.key)}
+                        onToggle={() => toggleIngredient(ingredient.key)}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <h3 className="text-xl font-serif font-medium mb-6 text-stone-800">Directions</h3>
+              {cookSteps.length > 0 ? (
+                <div className="relative pl-8 border-l-2 border-stone-200 space-y-10">
+                  {cookSteps.map((step, index) => (
+                    <div key={step.key} className="relative group">
+                      <span
+                        className={
+                          "absolute -left-[39px] top-0 flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ring-4 ring-stone-50 " +
+                          (index === 0 ? "bg-stone-900 text-white" : "bg-stone-200 text-stone-500")
+                        }
+                      >
+                        {index + 1}
+                      </span>
+                      <h4 className={"font-bold mb-2 text-lg " + (index === 0 ? "text-stone-900" : "text-stone-400")}>
+                        {step.title}
+                      </h4>
+                      <p
+                        className={
+                          "leading-relaxed " +
+                          (index === 0 ? "text-stone-600" : "text-stone-400 line-clamp-2")
+                        }
+                      >
+                        {step.previewText}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-stone-400">Steps coming soon.</p>
+              )}
+            </section>
+
+            {recipe.notes && (
+              <section className="mt-12">
+                <h3 className="text-xl font-serif font-medium mb-4 text-stone-800">Notes</h3>
+                <div className="bg-white border border-stone-100 rounded-2xl p-4 text-sm leading-relaxed text-stone-600 whitespace-pre-wrap">
+                  {recipe.notes}
+                </div>
+              </section>
+            )}
+          </main>
+
+          <div className="fixed bottom-6 left-6 right-6 z-20">
+            <button
+              type="button"
+              onClick={() => setMode("cook")}
+              disabled={cookSteps.length === 0}
+              className={
+                "w-full py-4 rounded-2xl font-bold shadow-2xl shadow-stone-900/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all " +
+                (cookSteps.length === 0
+                  ? "bg-stone-300 text-stone-500 cursor-not-allowed"
+                  : "bg-stone-900 text-white hover:bg-stone-800")
+              }
+            >
+              <ChefHat size={20} />
+              Start Cooking Mode
+            </button>
           </div>
         </div>
       )}
 
-      <div className="grid md:grid-cols-3 border-b-3 border-ink-black bg-gray-50 font-mono text-[10px] uppercase tracking-widest">
-        <div className="p-3 border-b-3 md:border-b-0 md:border-r-3 border-ink-black flex items-center">
-          <span className="text-gray-700">
-            {recipe.author ? `By ${recipe.author}` : "Family Archive"}
-          </span>
-        </div>
-        <div className="p-3 border-b-3 md:border-b-0 md:border-r-3 border-ink-black flex flex-col gap-1">
-          {recipe.prepTime && <span className="text-gray-700">Prep {formatTime(recipe.prepTime)}</span>}
-          {recipe.cookTime && <span className="text-gray-700">Cook {formatTime(recipe.cookTime)}</span>}
-          {recipe.totalTime && <span className="text-gray-700">Total {formatTime(recipe.totalTime)}</span>}
-          {!hasTime && <span className="text-gray-500">Time varies</span>}
-        </div>
-        <div className="p-3 flex flex-col gap-1">
-          <span className="text-gray-700">1 {recipe.batch.label} = {formatAmount(recipe.batch.totalGrams)}g</span>
-          <span className="text-gray-500">
-            Yield {yieldAmountLabel} {recipe.yield.unit}
-          </span>
-        </div>
-      </div>
-
-      <div className="border-b-3 border-ink-black p-4 bg-white">
-        <div className="flex flex-wrap gap-2">
-          {recipe.tags.length > 0 ? (
-            recipe.tags.map((tag) => (
-              <span key={tag} className="tag">
-                {tag}
-              </span>
-            ))
-          ) : (
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-              No tags
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="dotted-line" />
-
-      <div className="p-6 md:p-10">
-        {recipe.description && (
-          <p className="font-serif text-lg text-ink-light mb-6">{recipe.description}</p>
-        )}
-
-        <div className="border-3 border-ink-black/80 bg-gray-50 p-4 mb-10 flex flex-wrap items-center gap-4">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">Batches:</span>
-          <input
-            type="number"
-            value={batchMultiplier}
-            onChange={(event) => handleBatchChange(event.target.value)}
-            className="batch-input"
-            min="0.1"
-            step="any"
-          />
-          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-            {recipe.batch.label}
-          </span>
-          <div className="flex flex-col text-left md:text-right md:ml-auto">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-              Target {formatAmount(targetTotalGrams)}g
-            </span>
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ink">
-              Current {formatAmount(currentTotalGrams)}g
-            </span>
-          </div>
-          {hasAdjustments && (
-            <button
-              onClick={resetSimulation}
-              className="font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink underline"
-            >
-              Reset
-            </button>
-          )}
-        </div>
-
-        {componentViews.map((component, componentIndex) => (
-          <section key={`${component.name}-${componentIndex}`} className="mb-12 last:mb-0">
-            <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
-              <div>
-                <h2 className="component-header">Component: {component.name}</h2>
-                {component.description && (
-                  <p className="text-sm text-ink-muted mt-2 max-w-2xl">
-                    {component.description}
-                  </p>
-                )}
-              </div>
-              <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                {formatAmount(component.totalGrams)}g
-                {component.targetGrams && (
-                  <span className="text-ink-muted/70">
-                    {" "}/ {formatAmount(component.targetGrams)}g target
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-[280px_1fr] gap-8">
-              <div>
-                <h3 className="section-header">Ingredients</h3>
-                <div className="bg-white border-3 border-ink-black/80">
-                  {component.scaledIngredients.map((ingredient) => {
-                    const ingredientKey = buildIngredientKey(componentIndex, ingredient.id);
-                    const displayAmount = ingredient.scaledAmount;
-                    return (
-                      <div
-                        key={ingredientKey}
-                        className={`ingredient-row w-full text-left px-4 hover:bg-black/5 ${
-                          checkedIngredients.has(ingredientKey) ? "checked" : ""
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => toggleIngredient(ingredientKey)}
-                          className="flex items-center gap-3 text-left"
-                        >
-                          <span
-                            className={`w-4 h-4 border border-ink/30 flex items-center justify-center text-xs ${
-                              checkedIngredients.has(ingredientKey) ? "bg-accent text-white border-accent" : ""
-                            }`}
-                          >
-                            {checkedIngredients.has(ingredientKey) && "✓"}
-                          </span>
-                          <span className="ingredient-name">
-                            {ingredient.name}
-                            {ingredient.prep && (
-                              <span className="text-ink-muted text-sm ml-1">({ingredient.prep})</span>
-                            )}
-                          </span>
-                        </button>
-                        <div className="flex items-center gap-2 font-mono text-sm">
-                          <input
-                            type="number"
-                            value={Number.isFinite(displayAmount) ? displayAmount : 0}
-                            onChange={(event) =>
-                              handleIngredientChange(componentIndex, ingredient.id, event.target.value)
-                            }
-                            className="ingredient-input"
-                            step="any"
-                          />
-                          <span className="text-ink-muted">{ingredient.unit}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="section-header">Steps</h3>
-                {component.steps.length > 0 ? (
-                  <div className="space-y-0">
-                    {component.steps.map((step, stepIndex) => {
-                      const stepKey = buildStepKey(componentIndex, stepIndex);
-                      return (
-                        <button
-                          key={stepKey}
-                          onClick={() => toggleStep(stepKey)}
-                          className={`step-item w-full text-left cursor-pointer ${
-                            checkedSteps.has(stepKey) ? "checked" : ""
-                          }`}
-                          data-step={stepIndex + 1}
-                        >
-                          <div
-                            className="prose prose-sm max-w-none"
-                            dangerouslySetInnerHTML={{
-                              __html: scaleStepText(step, component.scaledIngredients),
-                            }}
-                          />
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                    Steps coming soon
-                  </p>
-                )}
-              </div>
-            </div>
-          </section>
-        ))}
-
-        {recipe.notes && (
-          <div className="mt-8">
-            <h2 className="section-header">Notes</h2>
-            <div className="notes-box whitespace-pre-wrap">{recipe.notes}</div>
-          </div>
-        )}
-      </div>
+      {mode === "cook" && <CookMode steps={cookSteps} onClose={() => setMode("overview")} />}
     </div>
   );
 }
