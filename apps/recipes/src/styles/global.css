@@ -9,9 +9,9 @@
   }
 
   :root {
-    --bg-paper: #F6F1E8;
-    --bg-paper-warm: #F2ECE2;
-    --ink-black: #161311;
+    --bg-paper: #E6F2EF;
+    --bg-paper-warm: #F5F2ED;
+    --ink-black: #050505;
   }
 
   body {
@@ -124,11 +124,11 @@
     @apply w-full text-left px-5 py-4 transition-colors duration-150;
   }
   .recipe-card:hover {
-    @apply bg-paper/70;
+    @apply bg-white/60;
   }
 
   .tag {
-    @apply font-mono text-[9px] bg-ink/10 px-1.5 py-0.5 uppercase tracking-wide text-ink-muted inline-block;
+    @apply font-mono text-[9px] bg-black/10 px-1.5 py-0.5 uppercase tracking-wide text-ink-muted inline-block;
   }
 
   .time-badge {
@@ -150,7 +150,7 @@
   }
   .step-item::before {
     content: attr(data-step);
-    @apply absolute left-0 -translate-x-1/2 w-6 h-6 bg-ink-black text-paper font-mono text-xs flex items-center justify-center;
+    @apply absolute left-0 -translate-x-1/2 w-6 h-6 bg-ink-black text-white font-mono text-xs flex items-center justify-center;
   }
   .step-item.checked {
     @apply opacity-50;
@@ -185,7 +185,7 @@
   }
 
   .notes-box {
-    @apply bg-ink/5 p-4 font-serif text-sm italic text-ink-light border border-ink/10;
+    @apply bg-black/5 p-4 font-serif text-sm italic text-ink-light border border-ink/10;
   }
 
   .prose {
