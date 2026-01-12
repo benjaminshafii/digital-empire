@@ -169,7 +169,7 @@
   }
 
   .ingredient-input {
-    @apply w-20 text-right bg-transparent border-b border-ink/20 focus:outline-none focus:border-ink-black;
+    @apply w-20 text-right bg-transparent border-b border-stone-200 text-sm text-stone-600 focus:outline-none focus:border-stone-400;
   }
 
   .component-header {

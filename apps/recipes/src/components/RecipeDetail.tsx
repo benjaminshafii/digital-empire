@@ -9,6 +9,8 @@ import {
   Clock,
   Flame,
   Heart,
+  Link2,
+  Link2Off,
   Pause,
   Play,
   RotateCcw,
@@ -27,11 +29,13 @@ type ScaledIngredient = {
   unit: string;
   prep?: string;
   amount: number;
+  baseAmount: number;
   scaledAmount: number;
 };
 
 type IngredientGroup = {
   name: string;
+  scale: number;
   ingredients: ScaledIngredient[];
 };
 
@@ -54,6 +58,7 @@ type IngredientRowProps = {
   ingredient: ScaledIngredient;
   isChecked: boolean;
   onToggle: () => void;
+  onAmountChange: (value: string) => void;
 };
 
 const stripHtml = (value: string): string => {
@@ -133,15 +138,23 @@ const Timer = ({ duration, isRunning, onToggle, onReset }: TimerProps) => {
   );
 };
 
-const IngredientRow = ({ ingredient, isChecked, onToggle }: IngredientRowProps) => {
-  const amountLabel = formatScaledAmount(ingredient.scaledAmount);
+const IngredientRow = ({ ingredient, isChecked, onToggle, onAmountChange }: IngredientRowProps) => {
+  const safeAmount = Number.isFinite(ingredient.scaledAmount) ? ingredient.scaledAmount : ingredient.baseAmount;
+  const displayAmount = formatScaledAmount(safeAmount);
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onToggle}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onToggle();
+        }
+      }}
       className={
-        "group flex w-full items-center justify-between p-4 rounded-xl cursor-pointer border transition-all duration-300 " +
+        "group flex items-center justify-between gap-4 p-4 rounded-xl cursor-pointer border transition-all duration-300 " +
         (isChecked
           ? "bg-stone-50 border-transparent"
           : "bg-white border-stone-100 shadow-sm hover:shadow-md hover:border-stone-200")
@@ -175,15 +188,22 @@ const IngredientRow = ({ ingredient, isChecked, onToggle }: IngredientRowProps) 
         </div>
       </div>
 
-      <span
-        className={
-          "font-mono text-sm transition-colors duration-300 " +
-          (isChecked ? "text-stone-300" : "text-stone-500 font-semibold")
-        }
+      <div
+        className="flex items-center gap-2"
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
       >
-        {amountLabel} <span className="text-xs font-sans font-normal text-stone-400">{ingredient.unit}</span>
-      </span>
-    </button>
+        <input
+          type="number"
+          inputMode="decimal"
+          step="any"
+          value={displayAmount}
+          onChange={(event) => onAmountChange(event.target.value)}
+          className="ingredient-input"
+        />
+        <span className="text-xs font-sans font-normal text-stone-400">{ingredient.unit}</span>
+      </div>
+    </div>
   );
 };
 
@@ -301,32 +321,126 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
   const [servings, setServings] = useState(baseServings);
   const [mode, setMode] = useState<"overview" | "cook">("overview");
   const [checkedIngredients, setCheckedIngredients] = useState<Set<string>>(new Set());
+  const [isLinked, setIsLinked] = useState(true);
+  const [linkedScale, setLinkedScale] = useState(1);
+  const [componentScale, setComponentScale] = useState<Record<number, number>>({});
+  const [lastEditedComponent, setLastEditedComponent] = useState(0);
 
   useEffect(() => {
     setServings(baseServings);
     setMode("overview");
     setCheckedIngredients(new Set());
+    setIsLinked(true);
+    setLinkedScale(1);
+    setComponentScale({});
+    setLastEditedComponent(0);
   }, [recipe.slug, baseServings]);
 
   const servingsRatio = servings / baseServings;
 
-  const ingredientGroups = useMemo<IngredientGroup[]>(() => {
-    return recipe.components.map((component, componentIndex) => ({
-      name: component.name,
-      ingredients: component.ingredients.map((ingredient) => ({
-        key: `${componentIndex}:${ingredient.id}`,
-        name: ingredient.name,
-        unit: ingredient.unit,
-        prep: ingredient.prep,
-        amount: ingredient.amount,
-        scaledAmount: ingredient.amount * servingsRatio,
-      })),
-    }));
+  const baseAmounts = useMemo<Record<string, number>>(() => {
+    const map: Record<string, number> = {};
+    recipe.components.forEach((component, componentIndex) => {
+      component.ingredients.forEach((ingredient) => {
+        map[`${componentIndex}:${ingredient.id}`] = ingredient.amount * servingsRatio;
+      });
+    });
+    return map;
   }, [recipe.components, servingsRatio]);
+
+  const ingredientGroups = useMemo<IngredientGroup[]>(() => {
+    return recipe.components.map((component, componentIndex) => {
+      const scale = isLinked ? linkedScale : componentScale[componentIndex] ?? 1;
+      return {
+        name: component.name,
+        scale,
+        ingredients: component.ingredients.map((ingredient) => {
+          const key = `${componentIndex}:${ingredient.id}`;
+          const baseAmount = baseAmounts[key] ?? ingredient.amount * servingsRatio;
+          return {
+            key,
+            name: ingredient.name,
+            unit: ingredient.unit,
+            prep: ingredient.prep,
+            amount: ingredient.amount,
+            baseAmount,
+            scaledAmount: baseAmount * scale,
+          };
+        }),
+      };
+    });
+  }, [recipe.components, baseAmounts, servingsRatio, isLinked, linkedScale, componentScale]);
 
   const scaledIngredients = useMemo(() => ingredientGroups.flatMap((group) => group.ingredients), [
     ingredientGroups,
   ]);
+
+  const handleIngredientChange = useCallback(
+    (componentIndex: number, ingredientKey: string, value: string) => {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        if (isLinked) {
+          setLinkedScale(1);
+        } else {
+          setComponentScale((prev) => ({ ...prev, [componentIndex]: 1 }));
+        }
+        return;
+      }
+
+      const parsed = Number.parseFloat(trimmed);
+      if (Number.isNaN(parsed) || parsed <= 0) return;
+
+      const baseAmount = baseAmounts[ingredientKey];
+      if (!baseAmount || baseAmount <= 0) return;
+
+      const ratio = parsed / baseAmount;
+      if (isLinked) {
+        setLinkedScale(ratio);
+      } else {
+        setComponentScale((prev) => ({ ...prev, [componentIndex]: ratio }));
+      }
+      setLastEditedComponent(componentIndex);
+    },
+    [baseAmounts, isLinked]
+  );
+
+  const toggleIngredient = useCallback((key: string) => {
+    setCheckedIngredients((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }, []);
+
+  const resetIngredients = useCallback(() => {
+    setCheckedIngredients(new Set());
+  }, []);
+
+  const toggleLink = useCallback(() => {
+    if (isLinked) {
+      setIsLinked(false);
+      setComponentScale((prev) => {
+        const next = { ...prev };
+        recipe.components.forEach((_, index) => {
+          next[index] = prev[index] ?? linkedScale;
+        });
+        return next;
+      });
+    } else {
+      setIsLinked(true);
+      setLinkedScale(componentScale[lastEditedComponent] ?? linkedScale);
+    }
+  }, [isLinked, linkedScale, componentScale, lastEditedComponent, recipe.components]);
+
+  const resetScale = useCallback(() => {
+    setLinkedScale(1);
+    setComponentScale({});
+    setLastEditedComponent(0);
+  }, []);
 
   const scaleStepText = useCallback(
     (html: string): string => {
@@ -382,22 +496,6 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
     return steps;
   }, [recipe.components, scaleStepText, totalMinutes]);
 
-  const toggleIngredient = useCallback((key: string) => {
-    setCheckedIngredients((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
-    });
-  }, []);
-
-  const resetIngredients = useCallback(() => {
-    setCheckedIngredients(new Set());
-  }, []);
-
   const difficultyLabel = useMemo(() => {
     if (!totalMinutes) return "Flexible";
     if (totalMinutes <= 30) return "Easy";
@@ -409,6 +507,9 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
   const cookTimeLabel = recipe.cookTime ? formatTime(recipe.cookTime) : null;
   const hasMultipleComponents = ingredientGroups.length > 1;
   const servingsLabel = formatScaledAmount(servings);
+  const hasScaleAdjustments = isLinked
+    ? Math.abs(linkedScale - 1) > 0.001
+    : Object.values(componentScale).some((scale) => Math.abs(scale - 1) > 0.001);
 
   return (
     <div className="relative">
@@ -491,26 +592,57 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
             </div>
 
             <section className="mb-12">
-              <div className="flex justify-between items-end mb-6">
+              <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
                 <h3 className="text-xl font-serif font-medium text-stone-800">Ingredients</h3>
-                {checkedIngredients.size > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    onClick={resetIngredients}
-                    className="text-xs font-bold text-green-700 tracking-wider uppercase hover:opacity-70 transition"
+                    onClick={toggleLink}
+                    className={
+                      "flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-semibold transition " +
+                      (isLinked
+                        ? "bg-stone-900 text-white"
+                        : "bg-white text-stone-500 border border-stone-200 hover:bg-stone-100")
+                    }
                   >
-                    Reset List
+                    {isLinked ? <Link2 size={12} /> : <Link2Off size={12} />}
+                    {isLinked ? "Linked" : "Isolated"}
                   </button>
-                )}
+                  {hasScaleAdjustments && (
+                    <button
+                      type="button"
+                      onClick={resetScale}
+                      className="text-[10px] font-semibold uppercase tracking-widest text-stone-500 hover:text-stone-700"
+                    >
+                      Reset Scale
+                    </button>
+                  )}
+                  {checkedIngredients.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={resetIngredients}
+                      className="text-[10px] font-semibold uppercase tracking-widest text-green-700 hover:opacity-70"
+                    >
+                      Reset List
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-6">
-                {ingredientGroups.map((group) => (
+                {ingredientGroups.map((group, groupIndex) => (
                   <div key={group.name} className="space-y-3">
                     {hasMultipleComponents && (
-                      <p className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">
-                        {group.name}
-                      </p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">
+                          {group.name}
+                        </p>
+                        {!isLinked && (
+                          <span className="text-[10px] uppercase tracking-widest text-stone-400">
+                            {group.scale.toFixed(2)}x
+                          </span>
+                        )}
+                      </div>
                     )}
                     {group.ingredients.map((ingredient) => (
                       <IngredientRow
@@ -518,6 +650,7 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
                         ingredient={ingredient}
                         isChecked={checkedIngredients.has(ingredient.key)}
                         onToggle={() => toggleIngredient(ingredient.key)}
+                        onAmountChange={(value) => handleIngredientChange(groupIndex, ingredient.key, value)}
                       />
                     ))}
                   </div>
