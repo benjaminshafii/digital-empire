@@ -173,8 +173,8 @@ export const UI_LABELS = {
   portfolioTag: 'WORK',
   
   // Visibility flags - what to show/hide
-  showCvSection: true,            // Show formal CV layout
-  showPrintButton: true,          // Show print button
+  showCvSection: false,           // Hide formal CV layout
+  showPrintButton: false,         // Hide print button
   showTimeline: false,            // Hide employment dates/periods
   showLocations: false,           // Hide job locations
   showJobTitles: false,           // Hide formal job titles
