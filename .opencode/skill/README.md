@@ -18,10 +18,11 @@ Skills are markdown documentation files that OpenCode reads to learn how to use 
 ```
 
 Some legacy skills still use `SKILL.example.md` templates; migrate as needed.
+Legacy skills may only include `SKILL.md`. When you touch one, add the missing scaffold files if the skill needs credentials or API calls.
 
 ## First-Time Setup
 
-After cloning this repo, create a local `.env` from the example and verify access:
+After cloning this repo, create a local `.env` from the example and verify access (if the skill includes these files):
 
 ```bash
 # Example for a skill with API credentials

@@ -110,5 +110,6 @@ Send results via Telegram.
 
 Always release the browser lock:
 ```
+Close the tab
 browser_browser_release()
 ```

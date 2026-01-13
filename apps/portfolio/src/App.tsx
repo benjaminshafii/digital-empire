@@ -14,10 +14,31 @@ function PostHogPageView() {
   return null
 }
 
+function ScrollToHash() {
+  const { hash } = useLocation()
+
+  useEffect(() => {
+    if (!hash) return
+    const id = hash.replace('#', '')
+    const scrollToTarget = () => {
+      const element = document.getElementById(id)
+      if (element) {
+        element.scrollIntoView({ behavior: 'auto' })
+      }
+    }
+    scrollToTarget()
+    const timeout = window.setTimeout(scrollToTarget, 200)
+    return () => window.clearTimeout(timeout)
+  }, [hash])
+
+  return null
+}
+
 function App() {
   return (
     <BrowserRouter>
       <PostHogPageView />
+      <ScrollToHash />
       <Routes>
         <Route path="/" element={<Resume data={data} />} />
       </Routes>

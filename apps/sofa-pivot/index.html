@@ -75,7 +75,7 @@
         </div>
     </div>
 
-    <div class="cam-hint">Click handle or sofa • Drag gizmo • WASD/Arrows: Nudge • Lock pivot for rotations</div>
+    <div class="cam-hint">Click handle/sofa or pivot cube • Drag gizmo • WASD/Arrows: Nudge</div>
 
     <div class="controls-panel glass-panel">
         <div class="space-y-4">
@@ -113,6 +113,17 @@
                     <button id="pivot-back-right" class="gizmo-btn">BACK R</button>
                 </div>
                 <div class="text-[10px] text-gray-400 mt-1">Drag uses locked pivot anchor.</div>
+            </div>
+
+            <div class="border-t border-white/10 pt-3">
+                <div class="text-[10px] text-blue-200 font-bold uppercase">Auto Solver</div>
+                <div class="flex gap-2 mt-2">
+                    <button id="btn-solve" class="gizmo-btn flex-1">SEARCH</button>
+                    <button id="btn-solve-stop" class="gizmo-btn flex-1">STOP</button>
+                </div>
+                <button id="btn-solve-play" class="gizmo-btn w-full mt-2">PLAY SOLUTION</button>
+                <div id="solve-status" class="text-[10px] text-gray-400 mt-1">No solution yet.</div>
+                <div class="text-[10px] text-gray-400 mt-1">Physics-based random steering in bounds.</div>
             </div>
 
             <div class="border-t border-white/10 pt-3">
@@ -164,7 +175,8 @@
             technique: 'manual', 
             simulating: false, progress: 0, collision: false,
             recording: false, replaying: false,
-            frames: []
+            solving: false, solutionPlaying: false,
+            frames: [], solutionFrames: []
         };
 
         // THREE JS
@@ -195,6 +207,33 @@
         const MOVE_STEP = 0.05;
         const MOVE_STEP_FAST = 0.15;
         const MOVE_STEP_FINE = 0.015;
+        const SOLVER_CONFIG = {
+            maxAttempts: 12,
+            maxFrames: 520,
+            timeStep: 1,
+            goalForce: 0.04,
+            centerForce: 0.05,
+            jitterForce: 0.03,
+            damping: 0.9,
+            maxSpeed: 0.12,
+            yawForce: 0.06,
+            yawJitter: 0.04,
+            yawDamping: 0.85,
+            maxYawSpeed: 0.2,
+            bounce: 0.35,
+            collisionBounce: 0.25,
+            startJitterX: 0.3,
+            startJitterZ: 0.2,
+            startYawJitter: Math.PI / 4
+        };
+        const SOLVER_BOUNDS = {
+            xMin: -1.4,
+            xMax: 1.4,
+            zMin: -ROOM.hallW / 2 - 0.35,
+            zMax: 2.8,
+            yawMin: -Math.PI / 2,
+            yawMax: Math.PI / 2
+        };
 
         transformControl.addEventListener('change', function () {
             if(transformControl.object && STATE.technique === 'manual' && !STATE.replaying) {
@@ -258,6 +297,8 @@
         const matHandleHover = new THREE.MeshBasicMaterial({ color: 0x7dd3fc, opacity: 0.9, transparent: true, depthTest: false });
         const matPivot = new THREE.MeshBasicMaterial({ color: 0x0ea5e9, opacity: 0.7, transparent: true, depthTest: false });
         const matPivotActive = new THREE.MeshBasicMaterial({ color: 0x22c55e, opacity: 0.9, transparent: true, depthTest: false });
+        const matSolverTrail = new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.6 });
+        const matBestTrail = new THREE.LineBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.7 });
 
         // Room
         const walls = [];
@@ -296,6 +337,24 @@
         const gltfLoader = new THREE.GLTFLoader();
         let panelCollapsed = false;
         let infoVisible = true;
+        let solverTrail = null;
+        let solverTrailPositions = null;
+        let bestTrail = null;
+        let bestTrailPositions = null;
+        const solverState = {
+            running: false,
+            attempts: 0,
+            steps: 0,
+            bestScore: -Infinity,
+            bestFrames: [],
+            bestZ: -Infinity,
+            success: false,
+            currentFrames: [],
+            velocity: new THREE.Vector3(),
+            angularVelocity: 0,
+            startPos: new THREE.Vector3(),
+            startYaw: 0
+        };
         
         function initSofaGroups() {
             mainGroup = new THREE.Group();
@@ -314,6 +373,25 @@
         }
         initSofaGroups();
 
+        function initSolverTrails() {
+            solverTrailPositions = new Float32Array(SOLVER_CONFIG.maxFrames * 3);
+            const solverGeom = new THREE.BufferGeometry();
+            solverGeom.setAttribute('position', new THREE.BufferAttribute(solverTrailPositions, 3));
+            solverGeom.setDrawRange(0, 0);
+            solverTrail = new THREE.Line(solverGeom, matSolverTrail);
+            solverTrail.frustumCulled = false;
+            scene.add(solverTrail);
+
+            bestTrailPositions = new Float32Array(SOLVER_CONFIG.maxFrames * 3);
+            const bestGeom = new THREE.BufferGeometry();
+            bestGeom.setAttribute('position', new THREE.BufferAttribute(bestTrailPositions, 3));
+            bestGeom.setDrawRange(0, 0);
+            bestTrail = new THREE.Line(bestGeom, matBestTrail);
+            bestTrail.frustumCulled = false;
+            scene.add(bestTrail);
+        }
+        initSolverTrails();
+
         function registerSofaMesh(mesh) {
             mesh.castShadow = true;
             mesh.receiveShadow = true;
@@ -325,6 +403,10 @@
 
         function buildSofa() {
             // Rebuild geometry without resetting MainGroup position
+            if(solverState.running) {
+                stopSolver("READY");
+            }
+            STATE.solutionPlaying = false;
             while(standGroup.children.length > 0){ 
                 standGroup.remove(standGroup.children[0]); 
             }
@@ -515,6 +597,8 @@
                 attachActivePivot();
             } else if(selectedHandle) {
                 selectHandle(selectedHandle);
+            } else {
+                transformControl.detach();
             }
         }
 
@@ -536,6 +620,280 @@
             });
         }
 
+        function getSolverGoalZ() {
+            return ROOM.hallW / 2 + 1.2;
+        }
+
+        function applySolverState(state) {
+            mainGroup.position.copy(state.position);
+            mainGroup.rotation.set(0, state.yaw, 0);
+        }
+
+        function isSolverStateValid(state) {
+            return (
+                state.position.x >= SOLVER_BOUNDS.xMin &&
+                state.position.x <= SOLVER_BOUNDS.xMax &&
+                state.position.z >= SOLVER_BOUNDS.zMin &&
+                state.position.z <= SOLVER_BOUNDS.zMax &&
+                state.yaw >= SOLVER_BOUNDS.yawMin &&
+                state.yaw <= SOLVER_BOUNDS.yawMax
+            );
+        }
+
+        function scoreSolverState(state) {
+            return state.position.z - Math.abs(state.position.x) * 0.2 - Math.abs(state.yaw) * 0.1;
+        }
+
+        function updateTrail(line, positions, frames) {
+            if(!line || !positions) return;
+            const count = Math.min(frames.length, SOLVER_CONFIG.maxFrames);
+            for(let i = 0; i < count; i++) {
+                positions[i * 3] = frames[i].pos.x;
+                positions[i * 3 + 1] = frames[i].pos.y;
+                positions[i * 3 + 2] = frames[i].pos.z;
+            }
+            line.geometry.setDrawRange(0, count);
+            line.geometry.attributes.position.needsUpdate = true;
+        }
+
+        function recordSolverFrame(frames) {
+            mainGroup.updateMatrixWorld();
+            frames.push({ pos: mainGroup.position.clone(), quat: mainGroup.quaternion.clone() });
+        }
+
+        function resetSolverAttempt() {
+            solverState.attempts += 1;
+            solverState.steps = 0;
+            solverState.currentFrames = [];
+            solverState.velocity.set(0, 0, SOLVER_CONFIG.maxSpeed * 0.6);
+            solverState.angularVelocity = (Math.random() - 0.5) * SOLVER_CONFIG.startYawJitter;
+
+            const startPos = solverState.startPos.clone();
+            startPos.x += (Math.random() - 0.5) * SOLVER_CONFIG.startJitterX;
+            startPos.z += (Math.random() - 0.5) * SOLVER_CONFIG.startJitterZ;
+            const startYaw = solverState.startYaw + (Math.random() - 0.5) * SOLVER_CONFIG.startYawJitter;
+
+            const next = { position: startPos, yaw: startYaw };
+            if(!isSolverStateValid(next)) {
+                next.position.x = solverState.startPos.x;
+                next.position.z = solverState.startPos.z;
+                next.yaw = solverState.startYaw;
+            }
+            applySolverState(next);
+            recordSolverFrame(solverState.currentFrames);
+            updateTrail(solverTrail, solverTrailPositions, solverState.currentFrames);
+            updateSolverBest({ position: mainGroup.position.clone(), yaw: mainGroup.rotation.y });
+        }
+
+        function updateSolverStatus() {
+            const statusEl = document.getElementById('solve-status');
+            if(!statusEl) return;
+            if(solverState.running) {
+                statusEl.innerText = `Attempt ${solverState.attempts}/${SOLVER_CONFIG.maxAttempts} • Step ${solverState.steps}/${SOLVER_CONFIG.maxFrames} • Best Z ${solverState.bestZ.toFixed(2)}m`;
+            } else if(STATE.solutionFrames.length > 0) {
+                const label = solverState.success ? "Solution ready" : `Best try Z ${solverState.bestZ.toFixed(2)}m`;
+                statusEl.innerText = label;
+            } else {
+                statusEl.innerText = "No solution yet.";
+            }
+        }
+
+        function updateSolverButtons() {
+            const solveBtn = document.getElementById('btn-solve');
+            const stopBtn = document.getElementById('btn-solve-stop');
+            const playBtn = document.getElementById('btn-solve-play');
+            const hasSolution = STATE.solutionFrames.length > 0;
+
+            if(solveBtn) {
+                solveBtn.className = solverState.running ? "gizmo-btn active flex-1" : "gizmo-btn flex-1";
+                solveBtn.innerText = solverState.running ? "SEARCHING..." : "SEARCH";
+            }
+            if(stopBtn) {
+                stopBtn.className = solverState.running ? "gizmo-btn flex-1" : "gizmo-btn flex-1";
+                stopBtn.disabled = !solverState.running;
+            }
+            if(playBtn) {
+                playBtn.className = hasSolution ? "gizmo-btn w-full mt-2 active" : "gizmo-btn w-full mt-2";
+                playBtn.innerText = STATE.solutionPlaying ? "STOP PLAYBACK" : "PLAY SOLUTION";
+                playBtn.disabled = !hasSolution;
+            }
+        }
+
+        function stopSolver(message = "SOLVER STOPPED") {
+            if(!solverState.running) {
+                STATE.solving = false;
+                updateSolverStatus();
+                updateSolverButtons();
+                return;
+            }
+            solverState.running = false;
+            STATE.solving = false;
+            setBadge(message, "ok");
+            updateSolverStatus();
+            updateSolverButtons();
+        }
+
+        function finalizeSolver() {
+            solverState.running = false;
+            STATE.solving = false;
+            if(solverState.bestFrames.length > 0) {
+                STATE.solutionFrames = solverState.bestFrames;
+                updateTrail(bestTrail, bestTrailPositions, solverState.bestFrames);
+                setBadge(solverState.success ? "SOLUTION FOUND" : "BEST TRY READY", "ok");
+            } else {
+                setBadge("NO PATH FOUND", "fail");
+            }
+            updateSolverStatus();
+            updateSolverButtons();
+        }
+
+        function updateSolverBest(state) {
+            const score = scoreSolverState(state);
+            if(state.position.z > solverState.bestZ) {
+                solverState.bestZ = state.position.z;
+            }
+            if(score > solverState.bestScore) {
+                solverState.bestScore = score;
+                solverState.bestFrames = solverState.currentFrames.slice();
+                updateTrail(bestTrail, bestTrailPositions, solverState.bestFrames);
+            }
+        }
+
+        function solverStep() {
+            if(!solverState.running) return;
+
+            solverState.steps += 1;
+
+            const goalForce = new THREE.Vector3(0, 0, SOLVER_CONFIG.goalForce);
+            const centerForce = new THREE.Vector3(-mainGroup.position.x * SOLVER_CONFIG.centerForce, 0, 0);
+            const jitter = new THREE.Vector3(
+                (Math.random() - 0.5) * SOLVER_CONFIG.jitterForce,
+                0,
+                (Math.random() - 0.5) * SOLVER_CONFIG.jitterForce
+            );
+
+            solverState.velocity.add(goalForce).add(centerForce).add(jitter);
+            solverState.velocity.multiplyScalar(SOLVER_CONFIG.damping);
+            if(solverState.velocity.length() > SOLVER_CONFIG.maxSpeed) {
+                solverState.velocity.setLength(SOLVER_CONFIG.maxSpeed);
+            }
+
+            const yawBias = -mainGroup.rotation.y * SOLVER_CONFIG.yawForce;
+            solverState.angularVelocity += yawBias + (Math.random() - 0.5) * SOLVER_CONFIG.yawJitter;
+            solverState.angularVelocity *= SOLVER_CONFIG.yawDamping;
+            solverState.angularVelocity = Math.max(-SOLVER_CONFIG.maxYawSpeed, Math.min(SOLVER_CONFIG.maxYawSpeed, solverState.angularVelocity));
+
+            const prevPos = mainGroup.position.clone();
+            const prevYaw = mainGroup.rotation.y;
+
+            mainGroup.position.x += solverState.velocity.x * SOLVER_CONFIG.timeStep;
+            mainGroup.position.z += solverState.velocity.z * SOLVER_CONFIG.timeStep;
+            mainGroup.rotation.y += solverState.angularVelocity * SOLVER_CONFIG.timeStep;
+
+            if(mainGroup.position.x < SOLVER_BOUNDS.xMin) {
+                mainGroup.position.x = SOLVER_BOUNDS.xMin;
+                solverState.velocity.x *= -SOLVER_CONFIG.bounce;
+            }
+            if(mainGroup.position.x > SOLVER_BOUNDS.xMax) {
+                mainGroup.position.x = SOLVER_BOUNDS.xMax;
+                solverState.velocity.x *= -SOLVER_CONFIG.bounce;
+            }
+            if(mainGroup.position.z < SOLVER_BOUNDS.zMin) {
+                mainGroup.position.z = SOLVER_BOUNDS.zMin;
+                solverState.velocity.z *= -SOLVER_CONFIG.bounce;
+            }
+            if(mainGroup.position.z > SOLVER_BOUNDS.zMax) {
+                mainGroup.position.z = SOLVER_BOUNDS.zMax;
+                solverState.velocity.z *= -SOLVER_CONFIG.bounce;
+            }
+            if(mainGroup.rotation.y < SOLVER_BOUNDS.yawMin) {
+                mainGroup.rotation.y = SOLVER_BOUNDS.yawMin;
+                solverState.angularVelocity *= -SOLVER_CONFIG.bounce;
+            }
+            if(mainGroup.rotation.y > SOLVER_BOUNDS.yawMax) {
+                mainGroup.rotation.y = SOLVER_BOUNDS.yawMax;
+                solverState.angularVelocity *= -SOLVER_CONFIG.bounce;
+            }
+
+            if(checkCollisions()) {
+                mainGroup.position.copy(prevPos);
+                mainGroup.rotation.y = prevYaw;
+                solverState.velocity.multiplyScalar(-SOLVER_CONFIG.collisionBounce);
+                solverState.angularVelocity *= -SOLVER_CONFIG.collisionBounce;
+            } else {
+                recordSolverFrame(solverState.currentFrames);
+                updateTrail(solverTrail, solverTrailPositions, solverState.currentFrames);
+                updateSolverBest({ position: mainGroup.position.clone(), yaw: mainGroup.rotation.y });
+            }
+
+            updateSolverStatus();
+
+            if(mainGroup.position.z > getSolverGoalZ() && Math.abs(mainGroup.position.x) < ROOM.doorW / 2 - 0.08) {
+                solverState.success = true;
+                finalizeSolver();
+                return;
+            }
+
+            if(solverState.steps >= SOLVER_CONFIG.maxFrames) {
+                if(solverState.attempts >= SOLVER_CONFIG.maxAttempts) {
+                    finalizeSolver();
+                } else {
+                    resetSolverAttempt();
+                }
+            }
+        }
+
+        function startSolver() {
+            if(solverState.running) return;
+
+            enterManualMode();
+            activePivotIndex = null;
+            updatePivotUI();
+            updatePivotIndicator();
+            scene.attach(mainGroup);
+            transformControl.detach();
+            tiltGroup.rotation.set(0,0,0);
+            standGroup.rotation.set(0,0,0);
+
+            solverState.running = true;
+            solverState.attempts = 0;
+            solverState.steps = 0;
+            solverState.bestScore = -Infinity;
+            solverState.bestFrames = [];
+            solverState.bestZ = -Infinity;
+            solverState.success = false;
+            solverState.startPos.copy(mainGroup.position);
+            solverState.startYaw = mainGroup.rotation.y;
+
+            STATE.solving = true;
+            STATE.solutionPlaying = false;
+            STATE.solutionFrames = [];
+            STATE.replaying = false;
+            STATE.simulating = false;
+
+            updateTrail(bestTrail, bestTrailPositions, []);
+            resetSolverAttempt();
+
+            setBadge("SOLVING...", "play");
+            updateSolverStatus();
+            updateSolverButtons();
+        }
+
+        function toggleSolutionPlayback() {
+            if(STATE.solutionFrames.length === 0) return;
+            if(STATE.solutionPlaying) {
+                STATE.solutionPlaying = false;
+                setBadge("SOLUTION STOPPED", "ok");
+            } else {
+                STATE.solutionPlaying = true;
+                solutionFrame = 0;
+                transformControl.detach();
+                scene.attach(mainGroup);
+                setBadge("PLAYING SOLUTION", "play");
+            }
+            updateSolverButtons();
+        }
+
         // --- INTERACTION ---
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
@@ -544,6 +902,7 @@
         window.addEventListener('pointermove', onPointerMove);
         
         function onPointerMove(event) {
+            if (STATE.solving || STATE.solutionPlaying) return;
             if (event.target.closest('.controls-panel')) return;
             if(!handleGroup || handleGroup.children.length === 0) return;
 
@@ -561,6 +920,7 @@
         }
 
         function onPointerDown(event) {
+            if (STATE.solving || STATE.solutionPlaying) return;
             if (event.target.closest('.controls-panel')) return;
 
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -657,6 +1017,9 @@
         window.addEventListener('keydown', function (event) {
             const target = event.target;
             if(target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.isContentEditable)) {
+                return;
+            }
+            if(STATE.solving || STATE.solutionPlaying) {
                 return;
             }
 
@@ -877,8 +1240,10 @@
 
         // --- RECORDING ---
         let replayFrame = 0;
+        let solutionFrame = 0;
         
         document.getElementById('btn-rec-action').onclick = () => {
+            if(STATE.solving) { return; }
             if(STATE.recording) {
                 STATE.recording = false;
                 document.getElementById('btn-rec-action').innerText = "● REC";
@@ -894,6 +1259,7 @@
         };
 
         document.getElementById('btn-replay').onclick = () => {
+            if(STATE.solving) { return; }
             if(STATE.frames.length === 0) { alert("No recording found!"); return; }
             STATE.replaying = true;
             replayFrame = 0;
@@ -906,6 +1272,10 @@
             requestAnimationFrame(animate);
             controls.update();
             
+            if(STATE.solving) {
+                solverStep();
+            }
+
             if(STATE.simulating) {
                 STATE.progress += 0.0025;
                 if(STATE.progress > 1) STATE.progress = 1;
@@ -916,7 +1286,22 @@
                 }
             }
             
-            if(STATE.replaying) {
+            if(STATE.solutionPlaying) {
+                if(solutionFrame < STATE.solutionFrames.length) {
+                    const f = STATE.solutionFrames[solutionFrame];
+                    mainGroup.position.copy(f.pos);
+                    mainGroup.quaternion.copy(f.quat);
+                    tiltGroup.rotation.set(0,0,0);
+                    standGroup.rotation.set(0,0,0);
+                    solutionFrame++;
+                    checkCollisions();
+                } else {
+                    STATE.solutionPlaying = false;
+                    solutionFrame = 0;
+                    setBadge("SOLUTION DONE", "ok");
+                    updateSolverButtons();
+                }
+            } else if(STATE.replaying) {
                 if(replayFrame < STATE.frames.length) {
                     const f = STATE.frames[replayFrame];
                     mainGroup.position.copy(f.pos);
@@ -1009,6 +1394,8 @@
 
         function resetSim() {
             STATE.simulating=false; STATE.progress=0; STATE.collision=false; STATE.replaying=false;
+            STATE.solutionPlaying = false;
+            stopSolver("READY");
             transformControl.detach();
             lockedY = null;
             scene.attach(mainGroup);
@@ -1019,6 +1406,8 @@
             
             if(STATE.technique === 'manual') setBadge("MANUAL MODE", "manual");
             else setBadge("READY", "ok");
+            updateSolverButtons();
+            updateSolverStatus();
         }
 
         const modelInput = document.getElementById('model-input');
@@ -1033,6 +1422,9 @@
         const pivotFrontRightBtn = document.getElementById('pivot-front-right');
         const pivotBackLeftBtn = document.getElementById('pivot-back-left');
         const pivotBackRightBtn = document.getElementById('pivot-back-right');
+        const solveBtn = document.getElementById('btn-solve');
+        const solveStopBtn = document.getElementById('btn-solve-stop');
+        const solvePlayBtn = document.getElementById('btn-solve-play');
 
         function clearCustomModel(showBadge = true) {
             customModel = null;
@@ -1114,6 +1506,10 @@
         if(pivotBackLeftBtn) pivotBackLeftBtn.onclick = () => setActivePivot(0);
         if(pivotBackRightBtn) pivotBackRightBtn.onclick = () => setActivePivot(1);
 
+        if(solveBtn) solveBtn.onclick = startSolver;
+        if(solveStopBtn) solveStopBtn.onclick = () => stopSolver();
+        if(solvePlayBtn) solvePlayBtn.onclick = toggleSolutionPlayback;
+
         if(infoToggle) {
             infoToggle.onclick = () => {
                 infoVisible = !infoVisible;
@@ -1132,6 +1528,8 @@
         updateFlatMoveUI();
         updatePanelUI();
         updateInfoUI();
+        updateSolverButtons();
+        updateSolverStatus();
         
         document.getElementById('mode-translate').onclick = () => { setTransformMode('translate'); };
         document.getElementById('mode-rotate').onclick = () => { setTransformMode('rotate'); };
@@ -1151,6 +1549,9 @@
         document.getElementById('technique-select').onchange = (e) => { STATE.technique = e.target.value; resetSim(); };
         document.getElementById('btn-reset').onclick = resetSim;
         document.getElementById('btn-sim').onclick = () => {
+            if(STATE.solving || STATE.solutionPlaying) {
+                return;
+            }
             if(STATE.technique === 'manual') {
                 alert("Select an Auto-Pilot technique from the dropdown to play animation.");
                 return;

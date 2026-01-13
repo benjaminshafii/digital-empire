@@ -26,6 +26,8 @@ See [AGENTS.md](./AGENTS.md) for the full manifesto.
 | [**corgina**](./apps/pregnancy) | Voice-first pregnancy tracker with AI nutrition estimates |
 | [**workout**](./apps/workout) | Phoneless Hevy - log gym workouts by voice on Apple Watch |
 
+Other app directories are experimental or in progress: `collab-server`, `obsidian-collab`, `recipes`, `sofa-pivot`.
+
 ## OpenCode Skills
 
 The `.opencode/skill/` directory contains AI-readable documentation for integrating with services:
@@ -37,6 +39,8 @@ The `.opencode/skill/` directory contains AI-readable documentation for integrat
 | `home-assistant` | Smart home control via REST API |
 | `telegram` | Notifications via bot API |
 | `self-improve` | Meta-skill for AI self-improvement |
+
+Additional skills (browser automation, cooking, deployment, recipes) live in `.opencode/skill/`.
 
 Skills guide the AI to obtain credentials when missing. See `.opencode/skill/README.md`.
 

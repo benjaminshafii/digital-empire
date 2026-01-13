@@ -1201,6 +1201,16 @@ function TechnicalResume({ onToggle, data }: TechnicalResumeProps) {
                   <h2 className="text-3xl lg:text-7xl font-black uppercase font-mono tracking-wide mb-6 lg:mb-10 break-all" style={{ color: '#00FFFF' }}>
                     {ui.aboutSectionHeader}
                   </h2>
+                  {ui.showPrintButton && (
+                    <div className="mb-6 print:hidden">
+                      <button
+                        onClick={() => window.print()}
+                        className="inline-flex items-center gap-2 border-2 border-[#00FFFF] px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-[#00FFFF] transition-all hover:bg-[#00FFFF] hover:text-black"
+                      >
+                        [ {ui.printButton} ]
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <CV theme="dark" profile={data.BENJAMIN_PROFILE} ui={data.UI_LABELS} />
               </section>

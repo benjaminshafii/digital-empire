@@ -43,3 +43,6 @@ outputs/
 # Note: SKILL.md files are now tracked for portability
 .opencode/skill/qbittorrent/torrent-sources.json
 .opencode/skill/telegram/telegram-chats.json
+
+# OpenCode mirror
+/vendor/opencode
