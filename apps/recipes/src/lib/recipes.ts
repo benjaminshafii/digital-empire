@@ -84,6 +84,7 @@ function parseRecipe(rawContent: string, filename: string): Recipe {
   }
 
   if (!frontMatter.tags) frontMatter.tags = [];
+  if (!frontMatter.pairsWellWith) frontMatter.pairsWellWith = [];
   if (!frontMatter.ingredients) frontMatter.ingredients = [];
   if (!frontMatter.yield) frontMatter.yield = { amount: 1, unit: "serving" };
 

@@ -3,6 +3,8 @@ title: "Perfect Pasta Water"
 slug: perfect-pasta-water
 description: "Exact salt-to-water ratio for perfectly seasoned pasta"
 tags: [italian, pasta, quick]
+pairsWellWith:
+  - garlic-olive-oil-shrimp-pasta
 yield:
   amount: 2
   unit: servings

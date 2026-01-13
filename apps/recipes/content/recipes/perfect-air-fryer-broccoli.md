@@ -3,6 +3,8 @@ title: "Perfect Air Fryer Broccoli"
 slug: perfect-air-fryer-broccoli
 description: "Crisp edges and tender stems with minimal seasoning"
 tags: [vegetarian, quick, side]
+pairsWellWith:
+  - garlic-olive-oil-shrimp-pasta
 yield:
   amount: 2
   unit: servings

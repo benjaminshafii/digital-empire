@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Recipe } from "../lib/types";
+import type { Recipe, RecipeComponent } from "../lib/types";
 import { formatAmount, formatTime } from "../lib/types";
+import { getRecipes } from "../lib/recipes";
 import {
   ArrowLeft,
   ChefHat,
@@ -87,6 +88,17 @@ const formatScaledAmount = (amount: number): string => {
   const formatted = formatAmount(amount);
   const parsed = Number.parseFloat(formatted);
   return Number.isNaN(parsed) ? formatted : parsed.toString();
+};
+
+const getRecipeMinutes = (recipe: Recipe): number => {
+  if (recipe.totalTime) return recipe.totalTime;
+  return (recipe.prepTime ?? 0) + (recipe.cookTime ?? 0);
+};
+
+const formatComponentName = (component: RecipeComponent, source: Recipe, isBase: boolean): string => {
+  if (isBase) return component.name;
+  if (source.components.length === 1) return source.title;
+  return `${source.title} · ${component.name}`;
 };
 
 const Timer = ({ duration, isRunning, onToggle, onReset }: TimerProps) => {
@@ -325,6 +337,9 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
   const [linkedScale, setLinkedScale] = useState(1);
   const [componentScale, setComponentScale] = useState<Record<number, number>>({});
   const [lastEditedComponent, setLastEditedComponent] = useState(0);
+  const [pairedSlugs, setPairedSlugs] = useState<string[]>([]);
+  const [pairingPicker, setPairingPicker] = useState("");
+  const [componentOverrides, setComponentOverrides] = useState<Record<number, string>>({});
 
   useEffect(() => {
     setServings(baseServings);
@@ -334,22 +349,101 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
     setLinkedScale(1);
     setComponentScale({});
     setLastEditedComponent(0);
+    setPairedSlugs([]);
+    setPairingPicker("");
+    setComponentOverrides({});
   }, [recipe.slug, baseServings]);
+
+  useEffect(() => {
+    setCheckedIngredients(new Set());
+    setIsLinked(true);
+    setLinkedScale(1);
+    setComponentScale({});
+    setLastEditedComponent(0);
+  }, [pairedSlugs, componentOverrides]);
 
   const servingsRatio = servings / baseServings;
 
+  const allRecipes = useMemo(() => getRecipes(), []);
+  const recipeLookup = useMemo(() => new Map(allRecipes.map((item) => [item.slug, item])), [allRecipes]);
+  const availablePairRecipes = useMemo(() => {
+    return allRecipes
+      .filter((candidate) => candidate.slug !== recipe.slug)
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }, [allRecipes, recipe.slug]);
+  const pairingSuggestions = useMemo(() => {
+    const suggestions = recipe.pairsWellWith ?? [];
+    return suggestions
+      .map((slug) => recipeLookup.get(slug))
+      .filter((candidate): candidate is Recipe => Boolean(candidate && candidate.slug !== recipe.slug));
+  }, [recipe.pairsWellWith, recipeLookup, recipe.slug]);
+  const pairedRecipes = useMemo(() => {
+    return pairedSlugs
+      .map((slug) => recipeLookup.get(slug))
+      .filter((candidate): candidate is Recipe => Boolean(candidate && candidate.slug !== recipe.slug));
+  }, [pairedSlugs, recipeLookup, recipe.slug]);
+  const pairingOptions = useMemo(() => {
+    return availablePairRecipes.filter((candidate) => !pairedSlugs.includes(candidate.slug));
+  }, [availablePairRecipes, pairedSlugs]);
+  const overrideSlugs = useMemo(
+    () => Object.values(componentOverrides).filter((value): value is string => Boolean(value)),
+    [componentOverrides]
+  );
+  const pairedExtras = useMemo(
+    () => pairedRecipes.filter((paired) => !overrideSlugs.includes(paired.slug)),
+    [pairedRecipes, overrideSlugs]
+  );
+  const activeComponents = useMemo(() => {
+    const components: RecipeComponent[] = [];
+    const overrideSet = new Set(overrideSlugs);
+    const useBaseTitle = recipe.components.length === 1 && (pairedRecipes.length > 0 || overrideSlugs.length > 0);
+
+    recipe.components.forEach((component, componentIndex) => {
+      const overrideSlug = componentOverrides[componentIndex];
+      if (overrideSlug) {
+        const overrideRecipe = recipeLookup.get(overrideSlug);
+        if (overrideRecipe) {
+          overrideRecipe.components.forEach((overrideComponent) => {
+            components.push({
+              ...overrideComponent,
+              name: formatComponentName(overrideComponent, overrideRecipe, false),
+            });
+          });
+          return;
+        }
+      }
+      components.push({
+        ...component,
+        name: useBaseTitle ? recipe.title : formatComponentName(component, recipe, true),
+      });
+    });
+
+    pairedRecipes
+      .filter((paired) => !overrideSet.has(paired.slug))
+      .forEach((paired) => {
+        paired.components.forEach((component) => {
+          components.push({
+            ...component,
+            name: formatComponentName(component, paired, false),
+          });
+        });
+      });
+
+    return components;
+  }, [recipe, pairedRecipes, componentOverrides, overrideSlugs, recipeLookup]);
+
   const baseAmounts = useMemo<Record<string, number>>(() => {
     const map: Record<string, number> = {};
-    recipe.components.forEach((component, componentIndex) => {
+    activeComponents.forEach((component, componentIndex) => {
       component.ingredients.forEach((ingredient) => {
         map[`${componentIndex}:${ingredient.id}`] = ingredient.amount * servingsRatio;
       });
     });
     return map;
-  }, [recipe.components, servingsRatio]);
+  }, [activeComponents, servingsRatio]);
 
   const ingredientGroups = useMemo<IngredientGroup[]>(() => {
-    return recipe.components.map((component, componentIndex) => {
+    return activeComponents.map((component, componentIndex) => {
       const scale = isLinked ? linkedScale : componentScale[componentIndex] ?? 1;
       return {
         name: component.name,
@@ -369,7 +463,7 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
         }),
       };
     });
-  }, [recipe.components, baseAmounts, servingsRatio, isLinked, linkedScale, componentScale]);
+  }, [activeComponents, baseAmounts, servingsRatio, isLinked, linkedScale, componentScale]);
 
   const scaledIngredients = useMemo(() => ingredientGroups.flatMap((group) => group.ingredients), [
     ingredientGroups,
@@ -425,7 +519,7 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
       setIsLinked(false);
       setComponentScale((prev) => {
         const next = { ...prev };
-        recipe.components.forEach((_, index) => {
+        activeComponents.forEach((_, index) => {
           next[index] = prev[index] ?? linkedScale;
         });
         return next;
@@ -434,12 +528,45 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
       setIsLinked(true);
       setLinkedScale(componentScale[lastEditedComponent] ?? linkedScale);
     }
-  }, [isLinked, linkedScale, componentScale, lastEditedComponent, recipe.components]);
+  }, [isLinked, linkedScale, componentScale, lastEditedComponent, activeComponents]);
 
   const resetScale = useCallback(() => {
     setLinkedScale(1);
     setComponentScale({});
     setLastEditedComponent(0);
+  }, []);
+
+  const togglePair = useCallback((slug: string) => {
+    setPairedSlugs((prev) =>
+      prev.includes(slug) ? prev.filter((value) => value !== slug) : [...prev, slug]
+    );
+  }, []);
+
+  const clearPairs = useCallback(() => {
+    setPairedSlugs([]);
+    setPairingPicker("");
+  }, []);
+
+  const addPairing = useCallback(() => {
+    if (!pairingPicker) return;
+    togglePair(pairingPicker);
+    setPairingPicker("");
+  }, [pairingPicker, togglePair]);
+
+  const updateComponentOverride = useCallback((componentIndex: number, slug: string) => {
+    setComponentOverrides((prev) => {
+      const next = { ...prev };
+      if (!slug) {
+        delete next[componentIndex];
+      } else {
+        next[componentIndex] = slug;
+      }
+      return next;
+    });
+  }, []);
+
+  const clearComponentOverrides = useCallback(() => {
+    setComponentOverrides({});
   }, []);
 
   const scaleStepText = useCallback(
@@ -468,17 +595,18 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
     [scaledIngredients]
   );
 
-  const totalMinutes = useMemo(() => {
-    if (recipe.totalTime) return recipe.totalTime;
-    return (recipe.prepTime ?? 0) + (recipe.cookTime ?? 0);
-  }, [recipe.totalTime, recipe.prepTime, recipe.cookTime]);
+  const baseMinutes = useMemo(() => getRecipeMinutes(recipe), [recipe]);
+  const pairedMinutes = useMemo(() => {
+    return pairedExtras.reduce((total, paired) => total + getRecipeMinutes(paired), 0);
+  }, [pairedExtras]);
+  const totalMinutes = useMemo(() => baseMinutes + pairedMinutes, [baseMinutes, pairedMinutes]);
 
   const cookSteps = useMemo<CookStep[]>(() => {
     const steps: CookStep[] = [];
-    const stepCount = recipe.components.reduce((total, component) => total + (component.steps?.length ?? 0), 0);
+    const stepCount = activeComponents.reduce((total, component) => total + (component.steps?.length ?? 0), 0);
     const durationSeconds = stepCount && totalMinutes ? Math.round((totalMinutes * 60) / stepCount) : 0;
 
-    recipe.components.forEach((component, componentIndex) => {
+    activeComponents.forEach((component, componentIndex) => {
       (component.steps ?? []).forEach((step, stepIndex) => {
         const title = extractStepTitle(step, `${component.name} Step ${stepIndex + 1}`);
         const scaledHtml = scaleStepText(step);
@@ -494,7 +622,7 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
     });
 
     return steps;
-  }, [recipe.components, scaleStepText, totalMinutes]);
+  }, [activeComponents, scaleStepText, totalMinutes]);
 
   const difficultyLabel = useMemo(() => {
     if (!totalMinutes) return "Flexible";
@@ -592,6 +720,136 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
             </div>
 
             <section className="mb-12">
+              <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
+                <h3 className="text-xl font-serif font-medium text-stone-800">Pair Recipes</h3>
+                <div className="flex items-center gap-3">
+                  {pairedSlugs.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={clearPairs}
+                      className="text-[10px] font-semibold uppercase tracking-widest text-stone-500 hover:text-stone-700"
+                    >
+                      Clear Pairs
+                    </button>
+                  )}
+                  {Object.keys(componentOverrides).length > 0 && (
+                    <button
+                      type="button"
+                      onClick={clearComponentOverrides}
+                      className="text-[10px] font-semibold uppercase tracking-widest text-stone-500 hover:text-stone-700"
+                    >
+                      Clear Swaps
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {pairingSuggestions.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">Pairs well with</p>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {pairingSuggestions.map((suggestion) => {
+                      const isActive = pairedSlugs.includes(suggestion.slug);
+                      return (
+                        <button
+                          key={suggestion.slug}
+                          type="button"
+                          onClick={() => togglePair(suggestion.slug)}
+                          className={
+                            "px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-semibold transition whitespace-nowrap " +
+                            (isActive
+                              ? "bg-stone-900 text-white"
+                              : "bg-white text-stone-500 border border-stone-200 hover:bg-stone-100")
+                          }
+                        >
+                          {suggestion.title}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {pairedRecipes.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {pairedRecipes.map((paired) => (
+                    <button
+                      key={paired.slug}
+                      type="button"
+                      onClick={() => togglePair(paired.slug)}
+                      className="flex items-center gap-2 px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-semibold bg-green-100 text-green-800 hover:bg-green-200 transition"
+                    >
+                      {paired.title}
+                      <X size={12} />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <select
+                  value={pairingPicker}
+                  onChange={(event) => setPairingPicker(event.target.value)}
+                  className="flex-1 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-green-200"
+                >
+                  <option value="">Add another recipe...</option>
+                  {pairingOptions.map((option) => (
+                    <option key={option.slug} value={option.slug}>
+                      {option.title}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={addPairing}
+                  disabled={!pairingPicker}
+                  className={
+                    "px-4 py-3 rounded-2xl text-xs font-semibold uppercase tracking-widest transition " +
+                    (pairingPicker
+                      ? "bg-stone-900 text-white hover:bg-stone-800"
+                      : "bg-stone-200 text-stone-400 cursor-not-allowed")
+                  }
+                >
+                  Add Pair
+                </button>
+              </div>
+
+              {recipe.components.length > 0 && (
+                <div className="mt-6">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold mb-2">Swap components</p>
+                  <div className="space-y-3">
+                    {recipe.components.map((component, componentIndex) => (
+                      <div
+                        key={`${component.name}-${componentIndex}`}
+                        className="flex flex-wrap items-center justify-between gap-3 bg-white border border-stone-100 rounded-2xl px-4 py-3 shadow-sm"
+                      >
+                        <div className="min-w-[140px]">
+                          <p className="text-sm font-semibold text-stone-800">{component.name}</p>
+                          {component.description && (
+                            <p className="text-xs text-stone-400">{component.description}</p>
+                          )}
+                        </div>
+                        <select
+                          value={componentOverrides[componentIndex] ?? ""}
+                          onChange={(event) => updateComponentOverride(componentIndex, event.target.value)}
+                          className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs text-stone-600 focus:outline-none focus:ring-2 focus:ring-green-200"
+                        >
+                          <option value="">Keep {component.name}</option>
+                          {availablePairRecipes.map((option) => (
+                            <option key={option.slug} value={option.slug}>
+                              {option.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-stone-400 mt-2">Swap uses the paired recipe’s steps and ingredients.</p>
+                </div>
+              )}
+            </section>
+
+            <section className="mb-12">
               <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
                 <h3 className="text-xl font-serif font-medium text-stone-800">Ingredients</h3>
                 <div className="flex flex-wrap items-center gap-2">
@@ -631,7 +889,7 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
 
               <div className="space-y-6">
                 {ingredientGroups.map((group, groupIndex) => (
-                  <div key={group.name} className="space-y-3">
+                  <div key={`${group.name}-${groupIndex}`} className="space-y-3">
                     {hasMultipleComponents && (
                       <div className="flex items-center justify-between">
                         <p className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">

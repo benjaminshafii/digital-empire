@@ -29,6 +29,7 @@ export interface RecipeFrontMatter {
   slug: string;
   description?: string;
   tags: string[];
+  pairsWellWith?: string[];
   image?: string;
   yield: RecipeYield;
   prepTime?: number;
