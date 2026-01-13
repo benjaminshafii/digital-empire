@@ -90,6 +90,11 @@ const formatScaledAmount = (amount: number): string => {
   return Number.isNaN(parsed) ? formatted : parsed.toString();
 };
 
+const formatScale = (value: number): string => {
+  if (!Number.isFinite(value)) return "1";
+  return value.toFixed(2).replace(/\.00$/, "");
+};
+
 const getRecipeMinutes = (recipe: Recipe): number => {
   if (recipe.totalTime) return recipe.totalTime;
   return (recipe.prepTime ?? 0) + (recipe.cookTime ?? 0);
@@ -333,10 +338,9 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
   const [servings, setServings] = useState(baseServings);
   const [mode, setMode] = useState<"overview" | "cook">("overview");
   const [checkedIngredients, setCheckedIngredients] = useState<Set<string>>(new Set());
-  const [isLinked, setIsLinked] = useState(true);
+  const [linkedComponents, setLinkedComponents] = useState<Set<number>>(new Set());
   const [linkedScale, setLinkedScale] = useState(1);
   const [componentScale, setComponentScale] = useState<Record<number, number>>({});
-  const [lastEditedComponent, setLastEditedComponent] = useState(0);
   const [pairedSlugs, setPairedSlugs] = useState<string[]>([]);
   const [pairingPicker, setPairingPicker] = useState("");
   const [componentOverrides, setComponentOverrides] = useState<Record<number, string>>({});
@@ -345,10 +349,9 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
     setServings(baseServings);
     setMode("overview");
     setCheckedIngredients(new Set());
-    setIsLinked(true);
+    setLinkedComponents(new Set());
     setLinkedScale(1);
     setComponentScale({});
-    setLastEditedComponent(0);
     setPairedSlugs([]);
     setPairingPicker("");
     setComponentOverrides({});
@@ -356,10 +359,9 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
 
   useEffect(() => {
     setCheckedIngredients(new Set());
-    setIsLinked(true);
+    setLinkedComponents(new Set());
     setLinkedScale(1);
     setComponentScale({});
-    setLastEditedComponent(0);
   }, [pairedSlugs, componentOverrides]);
 
   const servingsRatio = servings / baseServings;
@@ -444,7 +446,9 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
 
   const ingredientGroups = useMemo<IngredientGroup[]>(() => {
     return activeComponents.map((component, componentIndex) => {
-      const scale = isLinked ? linkedScale : componentScale[componentIndex] ?? 1;
+      const scale = linkedComponents.has(componentIndex)
+        ? linkedScale
+        : componentScale[componentIndex] ?? 1;
       return {
         name: component.name,
         scale,
@@ -463,7 +467,7 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
         }),
       };
     });
-  }, [activeComponents, baseAmounts, servingsRatio, isLinked, linkedScale, componentScale]);
+  }, [activeComponents, baseAmounts, servingsRatio, linkedComponents, linkedScale, componentScale]);
 
   const scaledIngredients = useMemo(() => ingredientGroups.flatMap((group) => group.ingredients), [
     ingredientGroups,
@@ -472,9 +476,14 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
   const handleIngredientChange = useCallback(
     (componentIndex: number, ingredientKey: string, value: string) => {
       const trimmed = value.trim();
+      const isComponentLinked = linkedComponents.has(componentIndex);
+
       if (!trimmed) {
-        if (isLinked) {
+        if (isComponentLinked) {
           setLinkedScale(1);
+          if (linkedComponents.size <= 1) {
+            setComponentScale((prev) => ({ ...prev, [componentIndex]: 1 }));
+          }
         } else {
           setComponentScale((prev) => ({ ...prev, [componentIndex]: 1 }));
         }
@@ -488,14 +497,16 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
       if (!baseAmount || baseAmount <= 0) return;
 
       const ratio = parsed / baseAmount;
-      if (isLinked) {
+      if (isComponentLinked) {
         setLinkedScale(ratio);
+        if (linkedComponents.size <= 1) {
+          setComponentScale((prev) => ({ ...prev, [componentIndex]: ratio }));
+        }
       } else {
         setComponentScale((prev) => ({ ...prev, [componentIndex]: ratio }));
       }
-      setLastEditedComponent(componentIndex);
     },
-    [baseAmounts, isLinked]
+    [baseAmounts, linkedComponents]
   );
 
   const toggleIngredient = useCallback((key: string) => {
@@ -514,26 +525,38 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
     setCheckedIngredients(new Set());
   }, []);
 
-  const toggleLink = useCallback(() => {
-    if (isLinked) {
-      setIsLinked(false);
-      setComponentScale((prev) => {
-        const next = { ...prev };
-        activeComponents.forEach((_, index) => {
-          next[index] = prev[index] ?? linkedScale;
-        });
+  const toggleComponentLink = useCallback(
+    (componentIndex: number) => {
+      setLinkedComponents((prev) => {
+        const next = new Set(prev);
+        const wasLinked = next.has(componentIndex);
+
+        if (wasLinked) {
+          next.delete(componentIndex);
+          setComponentScale((prevScale) => ({
+            ...prevScale,
+            [componentIndex]: linkedScale,
+          }));
+          if (next.size === 0) {
+            setLinkedScale(1);
+          }
+        } else {
+          next.add(componentIndex);
+          if (prev.size === 0) {
+            const initialScale = componentScale[componentIndex] ?? 1;
+            setLinkedScale(initialScale);
+          }
+        }
+
         return next;
       });
-    } else {
-      setIsLinked(true);
-      setLinkedScale(componentScale[lastEditedComponent] ?? linkedScale);
-    }
-  }, [isLinked, linkedScale, componentScale, lastEditedComponent, activeComponents]);
+    },
+    [linkedScale, componentScale]
+  );
 
   const resetScale = useCallback(() => {
     setLinkedScale(1);
     setComponentScale({});
-    setLastEditedComponent(0);
   }, []);
 
   const togglePair = useCallback((slug: string) => {
@@ -635,9 +658,9 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
   const cookTimeLabel = recipe.cookTime ? formatTime(recipe.cookTime) : null;
   const hasMultipleComponents = ingredientGroups.length > 1;
   const servingsLabel = formatScaledAmount(servings);
-  const hasScaleAdjustments = isLinked
-    ? Math.abs(linkedScale - 1) > 0.001
-    : Object.values(componentScale).some((scale) => Math.abs(scale - 1) > 0.001);
+  const hasScaleAdjustments =
+    Math.abs(linkedScale - 1) > 0.001 ||
+    Object.values(componentScale).some((scale) => Math.abs(scale - 1) > 0.001);
 
   return (
     <div className="relative">
@@ -851,21 +874,18 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
 
             <section className="mb-12">
               <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
-                <h3 className="text-xl font-serif font-medium text-stone-800">Ingredients</h3>
+                <div>
+                  <h3 className="text-xl font-serif font-medium text-stone-800">Ingredients</h3>
+                  {hasMultipleComponents && (
+                    <p className="text-xs text-stone-400 mt-1">Link components to scale together.</p>
+                  )}
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={toggleLink}
-                    className={
-                      "flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-semibold transition " +
-                      (isLinked
-                        ? "bg-stone-900 text-white"
-                        : "bg-white text-stone-500 border border-stone-200 hover:bg-stone-100")
-                    }
-                  >
-                    {isLinked ? <Link2 size={12} /> : <Link2Off size={12} />}
-                    {isLinked ? "Linked" : "Isolated"}
-                  </button>
+                  {linkedComponents.size > 0 && (
+                    <span className="text-[10px] uppercase tracking-widest text-stone-400">
+                      {linkedComponents.size} linked
+                    </span>
+                  )}
                   {hasScaleAdjustments && (
                     <button
                       type="button"
@@ -888,31 +908,47 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
               </div>
 
               <div className="space-y-6">
-                {ingredientGroups.map((group, groupIndex) => (
-                  <div key={`${group.name}-${groupIndex}`} className="space-y-3">
-                    {hasMultipleComponents && (
-                      <div className="flex items-center justify-between">
-                        <p className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">
-                          {group.name}
-                        </p>
-                        {!isLinked && (
-                          <span className="text-[10px] uppercase tracking-widest text-stone-400">
-                            {group.scale.toFixed(2)}x
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    {group.ingredients.map((ingredient) => (
-                      <IngredientRow
-                        key={ingredient.key}
-                        ingredient={ingredient}
-                        isChecked={checkedIngredients.has(ingredient.key)}
-                        onToggle={() => toggleIngredient(ingredient.key)}
-                        onAmountChange={(value) => handleIngredientChange(groupIndex, ingredient.key, value)}
-                      />
-                    ))}
-                  </div>
-                ))}
+                {ingredientGroups.map((group, groupIndex) => {
+                  const isComponentLinked = linkedComponents.has(groupIndex);
+                  const scaleLabel = formatScale(group.scale);
+
+                  return (
+                    <div key={`${group.name}-${groupIndex}`} className="space-y-3">
+                      {hasMultipleComponents && (
+                        <div className="flex items-center justify-between">
+                          <p className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">
+                            {group.name}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] uppercase tracking-widest text-stone-400">{scaleLabel}x</span>
+                            <button
+                              type="button"
+                              onClick={() => toggleComponentLink(groupIndex)}
+                              className={
+                                "flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-widest font-semibold transition " +
+                                (isComponentLinked
+                                  ? "bg-stone-900 text-white"
+                                  : "bg-white text-stone-500 border border-stone-200 hover:bg-stone-100")
+                              }
+                            >
+                              {isComponentLinked ? <Link2 size={12} /> : <Link2Off size={12} />}
+                              {isComponentLinked ? "Linked" : "Link"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      {group.ingredients.map((ingredient) => (
+                        <IngredientRow
+                          key={ingredient.key}
+                          ingredient={ingredient}
+                          isChecked={checkedIngredients.has(ingredient.key)}
+                          onToggle={() => toggleIngredient(ingredient.key)}
+                          onAmountChange={(value) => handleIngredientChange(groupIndex, ingredient.key, value)}
+                        />
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
             </section>
 
