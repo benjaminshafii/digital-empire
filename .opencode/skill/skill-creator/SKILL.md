@@ -2,132 +2,326 @@
 name: skill-creator
 description: Guide for creating effective skills. Use when users want to create or update a skill that extends Claude with specialized knowledge, workflows, or tool integrations.
 license: Complete terms in LICENSE.txt
+--
+
+# OpenCode Skill Template 
+
+> Disclaimer: This is a living template.
+
+This document formalizes how to design and implement OpenCode skills in this repo so they are:
+
+- **Portable** (shareable across machines/users)
+- **Reconstructable** (can recreate required local state)
+- **Self-building** (can bootstrap config/state and keep itself up to date)
+- **Credential-safe** (no secrets in git; graceful first-time setup)
+
 ---
 
-# Skill Creator
+## Target Operating Model (WIP)
 
-This skill provides guidance for creating effective skills.
+The intended long-term workflow:
 
-## About Skills
+1. Run OpenCode in a Docker container.
+2. Use a skills package manager to:
+   - Push skills from this repo
+   - Let other users (e.g. family) pull the same skills
 
-Skills are modular, self-contained packages that extend Claude's capabilities by providing specialized knowledge, workflows, and tools. Think of them as onboarding guides for specific domains or tasks.
+**Key constraint:** skills must be able to **self-bootstrap** their local state and credentials, because “pulling a skill” should not require manual repo surgery.
 
-### What Skills Provide
+---
 
-1. Specialized workflows - Multi-step procedures for specific domains
-2. Tool integrations - Instructions for working with specific file formats or APIs
-3. Domain expertise - Company-specific knowledge, schemas, business logic
-4. Bundled resources - Scripts, references, and assets for complex and repetitive tasks
+## Definitions
 
-## Core Principles
+- **Skill**: A folder under `.opencode/skill/<skill-name>/` primarily anchored by `SKILL.md`.
+- **Portable bundle (tracked)**: Files safe to commit and share.
+- **Local overlay (untracked)**: Per-user/per-machine state and secrets (gitignored).
 
-### Concise is Key
+A good skill clearly separates these.
 
-The context window is a public good. Keep only context Claude cannot infer. Prefer concise examples over verbose explanations.
+---
 
-### Set Appropriate Degrees of Freedom
+## Folder Layout (Preferred)
 
-Match specificity to fragility and variability:
-
-- High freedom (text-based instructions) for flexible workflows
-- Medium freedom (pseudocode or scripts with parameters) for preferred patterns
-- Low freedom (specific scripts, few parameters) for fragile operations
-
-## Anatomy of a Skill
-
-Every skill consists of a required SKILL.md file and optional bundled resources:
+Collocated scaffold (no `src/`):
 
 ```
-skill-name/
-├── SKILL.md (required)
-└── Bundled Resources (optional)
-    ├── scripts/
-    ├── references/
-    └── assets/
+.opencode/skill/<skill-name>/
+├── SKILL.md                    # Required. Human-readable + copy/paste commands.
+├── .skill.config.example           # Tracked. Declares required env vars.
+├── .skill.config                   # Gitignored. Actual credentials.
+├── load-env.ts                  # Tracked. Validates env vars; exports config.
+├── client.ts                    # Tracked. Request helper (fetch wrapper).
+├── first-call.ts                # Tracked. Minimal “does auth work?” check.
+├── openapi.json                 # Optional. Tracked API spec when available.
+├── <thing>.example.json         # Optional. Tracked template for local state.
+├── <thing>.json                 # Optional. Gitignored generated local state.
+└── scripts/                     # Optional. Tracked reusable scripts.
+    ├── bootstrap.ts             # Optional. Creates/validates local overlay.
+    └── <action>.ts              # Optional. Deterministic helpers.
 ```
 
-### SKILL.md (required)
+Notes:
 
-- Frontmatter (YAML) with `name` and `description`
-- Body (Markdown) with instructions
+- If a skill does not need credentials, you can omit `.skill.config*` and `load-env.ts`.
+- If a skill needs local configuration/state, include an `*.example.*` template and treat the real file as local overlay.
+- Prefer putting runnable helpers under `scripts/` so they stay collocated and discoverable.
+- Prefer **TypeScript scripts runnable with `bun`** (repo convention).
 
-### Bundled Resources (optional)
+---
 
-#### Scripts (`scripts/`)
+## Naming Rules
 
-Use for deterministic or repeated code.
+- Folder name is kebab-case: `^[a-z0-9]+(-[a-z0-9]+)*$`.
+- `SKILL.md` frontmatter `name` matches folder name.
+- `description` is one line and task-oriented.
 
-#### References (`references/`)
+---
 
-Use for documentation or schemas. For large files (>10k words), include grep patterns in SKILL.md.
+## Non-Negotiables (Safety + Portability)
 
-#### Assets (`assets/`)
+### Never commit secrets
 
-Use for templates or files used in outputs.
+Tracked files must never contain:
 
-### What to Not Include in a Skill
+- API keys / tokens
+- Passwords
+- Session cookies
+- User-specific IDs that should remain private
 
-Do not add extra docs like README.md, INSTALLATION_GUIDE.md, or CHANGELOG.md.
+If it’s sensitive, it goes in the local overlay (`.skill.config`, `*.json`, OS keychain, Bitwarden).
 
-## Progressive Disclosure Design
+### Always provide a first-time path
 
-Keep SKILL.md lean and under ~500 lines. Move heavy reference material into `references/` and link to it from SKILL.md.
+Every credentialed skill needs:
 
-## Skill Creation Process
+- A quick “credential check” command
+- A first-time setup section that tells the user exactly what to gather and where to put it
+- A minimal verification call
 
-Follow these steps, skipping only when clearly not applicable.
+### Prefer standards and stable APIs
 
-1. Understand the skill with concrete examples
-2. Plan reusable skill contents (scripts, references, assets)
-3. Initialize the skill (run `scripts/init_skill.py`)
-4. Edit the skill (implement resources and write SKILL.md)
-5. Package the skill (run `scripts/package_skill.py`)
-6. Iterate based on real usage
+- Use official REST APIs when available.
+- Use browser automation only as a fallback.
 
-### Step 1: Understand With Examples
+---
 
-Gather concrete usage examples to define scope. Ask minimal, targeted questions.
+## Credential Strategy (Multi-User Friendly)
 
-### Step 2: Plan Reusable Contents
+### Primary: per-skill `.skill.config`
 
-Identify scripts, references, and assets that prevent repeated work.
+- Store credentials in `.opencode/skill/<skill-name>/.skill.config` (gitignored).
+- Document required variables in `.skill.config.example`.
+- Prefer this name over plain `.env` to avoid collisions with repo-root `.env` files.
 
-### Step 3: Initialize the Skill
+Recommended `SKILL.md` snippet:
 
 ```bash
-scripts/init_skill.py <skill-name> --path <output-directory>
+# Always run commands from the skill folder
+cd .opencode/skill/<skill-name>
+
+# Load credentials
+source .skill.config
 ```
 
-### Step 4: Edit the Skill
+### Optional: Bitwarden or OS keychain
 
-- Use imperative/infinitive form in SKILL.md.
-- Include only essential guidance and procedural knowledge.
-- Remove unused example files from init.
+If you expect multiple users or frequent rotation, document a Bitwarden-based setup.
 
-#### Frontmatter
+Rule of thumb:
 
-Only include `name` and `description` (plus optional `license`, `compatibility`, `metadata`).
+- **Local `.skill.config`**: fastest and simplest.
+- **Bitwarden**: best when credentials must be shared across machines/users without committing.
 
-#### Body
+---
 
-Write concise instructions and link to references as needed.
+## Local State & “Self-Building” Skills
 
-### Step 5: Package the Skill
+A self-building skill can:
+
+- Detect missing local state (e.g. `telegram-chats.json`, `torrent-sources.json`).
+- Create it from an `*.example.json` template.
+- Guide the user to fill in required values.
+- Validate the result.
+
+### Pattern: tracked example + gitignored real file
+
+- Tracked: `thing.example.json` (safe defaults)
+- Local: `thing.json` (customized per environment)
+
+This pattern is already used by:
+
+- Telegram: `telegram-chats.example.json` → `telegram-chats.json`
+- qBittorrent: `torrent-sources.example.json` → `torrent-sources.json`
+
+### Pattern: bootstrap script
+
+If the skill is expected to run end-to-end often, include a bootstrap script (tracked) that ensures the local overlay exists.
+
+Preferred location: `.opencode/skill/<skill-name>/scripts/bootstrap.ts`.
+
+Example responsibilities for `scripts/bootstrap.ts`:
+
+- If `.skill.config` missing, print clear “Blocked” instructions (don’t guess secrets).
+- If `*.json` missing, copy from `*.example.json`.
+- Validate required fields exist.
+- Print next command(s) to run.
+
+You can invoke it with:
 
 ```bash
-scripts/package_skill.py <path/to/skill-folder>
+bun .opencode/skill/<skill-name>/scripts/bootstrap.ts
 ```
 
-### Step 6: Iterate
+---
 
-Use, observe friction, update SKILL.md/resources, test again.
+## “Self-Improving” Skills
 
-## OpenCode Conventions
+Skills should improve after real usage:
 
-Use OpenCode skill discovery and naming rules:
+- If a command fails and you learn the correct syntax, update `SKILL.md` immediately.
+- If an API returns surprising response codes or formats, document it.
+- If a workflow repeats twice, consider adding a small script (`*.ts`) to make it deterministic.
 
-- Place skills at `.opencode/skill/<name>/SKILL.md`.
-- `name` must match the folder name and follow `^[a-z0-9]+(-[a-z0-9]+)*$`.
-- `description` must be 1-1024 characters.
-- Use `skill` tool to load skills.
-- Configure skill permissions in `opencode.json` if needed.
+Keep the updates portable:
+
+- Update **templates** and docs in git.
+- Keep user-specific values in local overlay.
+
+---
+
+## SKILL.md Required Sections (Recommended)
+
+Use the following order and headings. This keeps skills consistent across the repo.
+
+1. Frontmatter
+
+```yaml
+---
+name: <skill-name>
+description: <one-line description>
+---
+```
+
+2. Credential Check
+
+- A short command that prints whether config exists.
+- Never prints full secrets (truncate tokens).
+
+3. Environment Setup
+
+- Where `.skill.config` lives.
+- Example variables.
+
+4. State / Config Files (if applicable)
+
+- Which files are tracked templates vs local overlays.
+- Exact copy commands.
+
+5. Quick Usage
+
+- Copy/paste-ready commands for 80% use cases.
+
+6. Common Gotchas
+
+- “Why it fails” + “how to fix”.
+
+7. First-Time Setup (If Not Configured)
+
+- “What you need from the user” list.
+- Step-by-step UI instructions if needed.
+- “Test it works” command.
+
+8. API Reference (optional)
+
+- Endpoints, methods, meanings.
+
+---
+
+## Minimal `.skill.config.example`
+
+Keep it short and declarative:
+
+```bash
+# <Skill Name>
+# Base URL (include scheme)
+SKILL_URL=
+
+# Token or key
+SKILL_TOKEN=
+```
+
+---
+
+## Minimal `load-env.ts` (Template)
+
+Use this pattern for strict validation and ergonomic usage in scripts.
+
+```ts
+// .opencode/skill/<skill-name>/load-env.ts
+
+import { config as loadDotenv } from "dotenv";
+import { resolve } from "node:path";
+
+loadDotenv({ path: resolve(import.meta.dir, ".skill.config") });
+
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required env var: ${name}`);
+  return value;
+}
+
+export const SKILL_URL = requireEnv("SKILL_URL");
+export const SKILL_TOKEN = requireEnv("SKILL_TOKEN");
+```
+
+Notes:
+
+- If you don’t want to hard-fail, print guidance and exit with a clear error.
+- Don’t auto-create `.skill.config` with secrets; only create `.skill.config` from `.skill.config.example` with blanks.
+
+---
+
+## Minimal `first-call.ts` (Template)
+
+This should be the smallest possible auth/health check.
+
+```ts
+import { SKILL_TOKEN, SKILL_URL } from "./load-env";
+
+const res = await fetch(`${SKILL_URL}/health`, {
+  headers: { Authorization: `Bearer ${SKILL_TOKEN}` },
+});
+
+if (!res.ok) {
+  throw new Error(`Auth check failed: ${res.status} ${await res.text()}`);
+}
+
+console.log("OK");
+```
+
+---
+
+## Docker Considerations (So Skills Stay Portable)
+
+When running OpenCode in Docker, keep the same split:
+
+- Portable bundle: committed files inside the repo.
+- Local overlay:
+  - Bind-mount per-user secret/config files, or
+  - Provide env vars via Docker runtime, or
+  - Use secret managers outside git.
+
+**Do not design a skill that requires editing tracked files to run.**
+
+---
+
+## Skill Authoring Checklist
+
+Before calling a skill “done”:
+
+- `SKILL.md` contains a working “Credential Check” and “First-Time Setup”.
+- Any state/config has an `*.example.*` tracked template.
+- All copy/paste commands are correct and tested.
+- Nothing tracked contains secrets.
+- There is a minimal “verification” call (`first-call.ts` or curl).
+- The skill can be pulled into a fresh machine and bootstrapped with minimal steps.
