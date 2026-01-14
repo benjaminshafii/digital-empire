@@ -1,0 +1,3 @@
+[submodule "apps/openwork"]
+	path = apps/openwork
+	url = https://github.com/different-ai/openwork.git
