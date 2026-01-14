@@ -2,7 +2,7 @@
 name: skill-creator
 description: Guide for creating effective skills. Use when users want to create or update a skill that extends Claude with specialized knowledge, workflows, or tool integrations.
 license: Complete terms in LICENSE.txt
---
+---
 
 # OpenCode Skill Template 
 

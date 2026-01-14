@@ -17,11 +17,18 @@ metadata:
 ## Best-practice workflow
 
 1. Inspect tabs with `browser_get_tabs`
-2. Navigate with `browser_navigate` if needed
-3. Wait for UI using `browser_query` with `timeoutMs`
-4. Discover candidates using `browser_query` with `mode=list`
-5. Click or type using `index`
-6. Confirm using `browser_query` or `browser_snapshot`
+2. Open new tabs with `browser_open_tab` when needed
+3. Navigate with `browser_navigate` if needed
+4. Wait for UI using `browser_query` with `timeoutMs`
+5. Discover candidates using `browser_query` with `mode=list`
+6. Click, type, or select using `index`
+7. Confirm using `browser_query` or `browser_snapshot`
+
+## Selecting options
+
+- Use `browser_select` for native `<select>` elements
+- Prefer `value` or `label`; use `optionIndex` when needed
+- Example: `browser_select({ selector: "select", value: "plugin" })`
 
 ## Query modes
 
@@ -30,6 +37,11 @@ metadata:
 - `list`: list many matches with text/metadata
 - `exists`: check presence and count
 - `page_text`: extract visible page text
+
+## Opening tabs
+
+- Use `browser_open_tab` to create a new tab, optionally with `url` and `active`
+- Example: `browser_open_tab({ url: "https://example.com", active: false })`
 
 ## Troubleshooting
 
