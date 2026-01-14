@@ -1,3 +1,9 @@
 [submodule "apps/openwork"]
 	path = apps/openwork
 	url = https://github.com/different-ai/openwork.git
+[submodule "vendor/opencode-browser"]
+	path = vendor/opencode-browser
+	url = https://github.com/different-ai/opencode-browser.git
+[submodule "vendor/opencode-scheduler"]
+	path = vendor/opencode-scheduler
+	url = https://github.com/different-ai/opencode-scheduler.git
