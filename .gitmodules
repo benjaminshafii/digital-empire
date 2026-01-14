@@ -7,3 +7,6 @@
 [submodule "vendor/opencode-scheduler"]
 	path = vendor/opencode-scheduler
 	url = https://github.com/different-ai/opencode-scheduler.git
+[submodule "apps/openwork-landing"]
+	path = apps/openwork-landing
+	url = https://github.com/different-ai/openwork-landing.git
