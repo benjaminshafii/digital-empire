@@ -130,7 +130,7 @@ importers:
         specifier: ^2.0.0
         version: 2.9.1
       '@tauri-apps/plugin-dialog':
-        specifier: ^2.5.0
+        specifier: ~2.5.0
         version: 2.5.0
       jsonc-parser:
         specifier: ^3.2.1
