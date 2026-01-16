@@ -30,5 +30,12 @@
     "opencode-scheduler@latest",
     "@different-ai/opencode-browser"
   ],
+  "permission": {
+    "external_directory": {
+      "*": "ask",
+      "../worktrees/*": "allow",
+      "*/worktrees/*": "allow"
+    }
+  },
   "agent": {}
 }
