@@ -9,12 +9,22 @@ A small helper skill for the OpenWork macOS release flow.
 
 It stores the **App Store Connect Issuer ID**, **API Key ID**, and **.p8 path** in the macOS Keychain so you don’t have to keep hunting them.
 
-Keychain location used by this skill:
+Keychain locations used by OpenWork release skills:
+
+### Notary credentials
 - Service: `com.differentai.openwork.notary`
 - Accounts:
   - `issuer-id`
   - `key-id`
   - `key-path`
+
+### Tauri updater signing keys
+These are used to sign updater artifacts (required for in-app updates).
+
+- Service: `com.differentai.openwork.updater`
+- Accounts:
+  - `updater-private-key`
+  - `updater-public-key`
 
 ## Quick usage (Keychain)
 
@@ -57,6 +67,23 @@ DMG_PATH="apps/openwork/src-tauri/target/release/bundle/dmg/OpenWork_0.1.2_aarch
 xcrun stapler staple "$DMG_PATH"
 spctl --assess --type open --verbose=4 "$DMG_PATH"
 ```
+
+## GitHub Actions: updater signing secret
+
+The OpenWork release workflow expects a GitHub Actions secret:
+- `TAURI_SIGNING_PRIVATE_KEY`
+
+To populate it from Keychain:
+
+```bash
+security find-generic-password -a updater-private-key -s com.differentai.openwork.updater -w
+```
+
+Then paste that value into the repo secret `TAURI_SIGNING_PRIVATE_KEY`.
+
+Notes:
+- Do not commit the private key.
+- If you rotate/replace the private key, you must also update the embedded `pubkey` in `apps/openwork/src-tauri/tauri.conf.json` to match.
 
 ## Common gotchas
 
