@@ -34,6 +34,44 @@ Root guidance for OpenCode behaviors and workflow philosophy.
 - Home automation job → scheduled run → retry on auth failure.
 - API skill bootstrap → load env → first call → compose deeper flows.
 
+## Skill: Worktrees + PRs + Submodules (Control Center)
+
+This repo is the control center. Most feature work should happen on a clean branch and often inside submodules (e.g. `apps/openwork/`, `apps/openwork-landing/`). The goal is: ship a PR with the feature, keep all repos in sync, and end with a clean working tree.
+
+### Golden path
+
+1. Sync the control center:
+   - `git fetch origin --prune`
+   - `git switch master && git pull --ff-only`
+
+2. Create an isolated worktree for the feature:
+   - `git worktree add -b feat/<name> ../worktrees/feat-<name> master`
+
+3. Make changes (including inside submodules).
+
+4. Submodules: commit + push inside the submodule first.
+   - `git -C apps/openwork status`
+   - `git -C apps/openwork add -A && git -C apps/openwork commit -m "..."`
+   - `git -C apps/openwork push`
+
+5. Then update the parent repo to point at the new submodule commits:
+   - `git add apps/openwork apps/openwork-landing`
+
+6. Verify everything is clean before opening a PR:
+   - `git status`
+   - `git submodule status`
+   - `git -C apps/openwork status`
+   - `git -C apps/openwork-landing status`
+
+7. Push branch + open PR:
+   - `git push -u origin feat/<name>`
+   - `gh pr create --base master`
+
+### Permissions & safety
+
+- If a command writes outside the repo (worktrees in `../worktrees`, installs, system paths), ask the user before running.
+- Never commit secrets (`.env`, credentials). Keep the working tree clean at the end.
+
 For deeper repository guidance and skill scaffolds, see `.opencode/agent/draupnir.md`.
 
 ## Self-reference
