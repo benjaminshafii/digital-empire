@@ -76,6 +76,11 @@ This repo is the control center.
    - `git commit -m "chore: bump submodule pointers"`
    - `git push origin master`
 
+### Permissions & isolation notes
+
+- Run all commands from the feature worktree (set shell `workdir` / OpenCode `--cwd` to the worktree path) so permissions stay scoped to that directory.
+- Avoid multiple active worktrees that touch the same submodule at once; submodule git dirs are shared. Finish one feature before starting another.
+
 ### Cleanliness checks
 
 - `git status`
