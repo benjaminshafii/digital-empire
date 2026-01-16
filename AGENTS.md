@@ -36,41 +36,52 @@ Root guidance for OpenCode behaviors and workflow philosophy.
 
 ## Skill: Worktrees + PRs + Submodules (Control Center)
 
-This repo is the control center. Most feature work should happen on a clean branch and often inside submodules (e.g. `apps/openwork/`, `apps/openwork-landing/`). The goal is: ship a PR with the feature, keep all repos in sync, and end with a clean working tree.
+This repo is the control center.
 
-### Golden path
+- Control-center changes (docs, submodule pointers, tooling) go **directly to `master`** and are pushed (no PR).
+- Product changes live in submodules (e.g. `apps/openwork/`, `apps/openwork-landing/`) and ship via **PRs in the submodule repos**, then the control center is updated to point at the merged submodule commits.
+
+### Standing permissions
+
+- Allowed: create worktrees under `../worktrees/*`.
+- Allowed: install dependencies in submodules (e.g. `pnpm install`).
+- Still ask first: anything destructive (rm/reset), anything outside the repo, anything involving credentials.
+
+### Golden path (OpenWork feature)
 
 1. Sync the control center:
    - `git fetch origin --prune`
-   - `git switch master && git pull --ff-only`
+   - `git pull --ff-only origin master`
 
-2. Create an isolated worktree for the feature:
+2. Create an isolated worktree:
    - `git worktree add -b feat/<name> ../worktrees/feat-<name> master`
 
-3. Make changes (including inside submodules).
+3. Ensure submodules are ready:
+   - `git submodule update --init --recursive`
 
-4. Submodules: commit + push inside the submodule first.
-   - `git -C apps/openwork status`
+4. Submodule work (example: OpenWork):
+   - `git -C apps/openwork switch -c feat/<name>`
+   - `pnpm -C apps/openwork install`
+   - Make changes + run checks (`pnpm -C apps/openwork typecheck`, plus build/e2e as appropriate).
+
+5. Submodule PR + auto-merge:
    - `git -C apps/openwork add -A && git -C apps/openwork commit -m "..."`
-   - `git -C apps/openwork push`
+   - `git -C apps/openwork push -u origin feat/<name>`
+   - `gh pr create --repo different-ai/openwork --base main --head feat/<name>`
+   - `gh pr merge --repo different-ai/openwork --auto --squash`
 
-5. Then update the parent repo to point at the new submodule commits:
-   - `git add apps/openwork apps/openwork-landing`
+6. After the submodule PR merges: update the control center to the merged commit and push `master`:
+   - `git -C apps/openwork switch main && git -C apps/openwork pull --ff-only`
+   - `git add apps/openwork` (and/or `apps/openwork-landing`)
+   - `git commit -m "chore: bump submodule pointers"`
+   - `git push origin master`
 
-6. Verify everything is clean before opening a PR:
-   - `git status`
-   - `git submodule status`
-   - `git -C apps/openwork status`
-   - `git -C apps/openwork-landing status`
+### Cleanliness checks
 
-7. Push branch + open PR:
-   - `git push -u origin feat/<name>`
-   - `gh pr create --base master`
-
-### Permissions & safety
-
-- If a command writes outside the repo (worktrees in `../worktrees`, installs, system paths), ask the user before running.
-- Never commit secrets (`.env`, credentials). Keep the working tree clean at the end.
+- `git status`
+- `git submodule status`
+- `git -C apps/openwork status`
+- `git -C apps/openwork-landing status`
 
 For deeper repository guidance and skill scaffolds, see `.opencode/agent/draupnir.md`.
 
