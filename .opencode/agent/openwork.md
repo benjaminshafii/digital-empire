@@ -25,6 +25,9 @@ You build and maintain OpenWork, the Tauri + SolidJS GUI for OpenCode. Work live
 - `apps/openwork/AGENTS.md` (local rules)
 - `apps/openwork/design-prd.md` (product intent + flows)
 
+## Each time you need to design trigger the
+@designer sub-agent
+
 ## Repo map
 
 - `apps/openwork/src/` — SolidJS + Tailwind UI

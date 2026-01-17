@@ -25,6 +25,11 @@ outputs/
 .env.*
 !.env.example
 
+# Skill config files (credentials)
+.skill.config
+.skill.config.*
+!.skill.config.example
+
 # Xcode build artifacts
 **/DerivedData/
 *.xcarchive/
