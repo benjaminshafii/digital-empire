@@ -38,7 +38,7 @@ Root guidance for OpenCode behaviors and workflow philosophy.
 
 If you are doing product work in submodules, start your prompt with:
 
-@submodule-dev-flow
+skill({ name: "submodule-dev-flow" })
 
 This skill encodes the opinionated workflow (submodule PRs + control-center pointer bumps).
 
