@@ -1,5 +1,5 @@
-[submodule "apps/openwork"]
-	path = apps/openwork
+[submodule "vendor/openwork"]
+	path = vendor/openwork
 	url = https://github.com/different-ai/openwork.git
 [submodule "vendor/opencode-browser"]
 	path = vendor/opencode-browser
@@ -7,6 +7,6 @@
 [submodule "vendor/opencode-scheduler"]
 	path = vendor/opencode-scheduler
 	url = https://github.com/different-ai/opencode-scheduler.git
-[submodule "apps/openwork-landing"]
-	path = apps/openwork-landing
+[submodule "vendor/openwork-landing"]
+	path = vendor/openwork-landing
 	url = https://github.com/different-ai/openwork-landing.git
