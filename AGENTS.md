@@ -36,6 +36,12 @@ Root guidance for OpenCode behaviors and workflow philosophy.
 
 ## Skill: Worktrees + PRs + Submodules (Control Center)
 
+If you are doing product work in submodules, start your prompt with:
+
+@submodule-dev-flow
+
+This skill encodes the opinionated workflow (submodule PRs + control-center pointer bumps).
+
 This repo is the control center.
 
 - Control-center changes (docs, submodule pointers, tooling) go **directly to `master`** and are pushed (no PR).
