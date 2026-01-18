@@ -22,8 +22,8 @@ You focus on product design and UI/UX quality for OpenWork. Prioritize clarity, 
 
 ## Always read first
 
-- `apps/openwork/AGENTS.md`
-- `apps/openwork/design-prd.md`
+- `vendor/openwork/AGENTS.md`
+- `vendor/openwork/design-prd.md`
 
 ## Core responsibilities
 

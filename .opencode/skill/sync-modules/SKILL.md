@@ -27,20 +27,20 @@ git submodule update --init --recursive
 
 ```bash
 git submodule status
-git -C apps/openwork status
-git -C apps/openwork-landing status
+git -C vendor/openwork status
+git -C vendor/openwork-landing status
 ```
 
 ### 3) Update OpenWork submodule pointer (optional)
 
 ```bash
 # Update the pinned checkout to the latest main.
-git -C apps/openwork fetch origin --prune
-git -C apps/openwork switch main
-git -C apps/openwork pull --ff-only
+git -C vendor/openwork fetch origin --prune
+git -C vendor/openwork switch main
+git -C vendor/openwork pull --ff-only
 
 # Record the new gitlink on control-center master.
-git add apps/openwork
+git add vendor/openwork
 git commit -m "chore: bump openwork submodule"
 git push origin master
 ```
@@ -49,12 +49,12 @@ git push origin master
 
 ```bash
 # Update the pinned checkout to the latest main.
-git -C apps/openwork-landing fetch origin --prune
-git -C apps/openwork-landing switch main
-git -C apps/openwork-landing pull --ff-only
+git -C vendor/openwork-landing fetch origin --prune
+git -C vendor/openwork-landing switch main
+git -C vendor/openwork-landing pull --ff-only
 
 # Record the new gitlink on control-center master.
-git add apps/openwork-landing
+git add vendor/openwork-landing
 git commit -m "chore: bump openwork-landing submodule"
 git push origin master
 ```

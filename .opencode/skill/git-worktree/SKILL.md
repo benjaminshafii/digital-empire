@@ -16,7 +16,7 @@ Create a new git worktree under `../worktrees/<name>` so feature work is isolate
 This repo commonly uses worktrees for feature work. The usual pattern is:
 
 - Control-center worktree: `../worktrees/<feature>`
-- Submodule work happens inside that worktree (example: `apps/openwork/`)
+- Submodule work happens inside that worktree (example: `vendor/openwork/`)
 
 ## Safety Rules
 
@@ -67,15 +67,15 @@ git -C ../worktrees/feat-<name> submodule update --init --recursive
 Inside the new worktree:
 
 ```bash
-git -C ../worktrees/feat-<name>/apps/openwork fetch origin --prune
-git -C ../worktrees/feat-<name>/apps/openwork switch -c feat/<name> origin/main
+git -C ../worktrees/feat-<name>/vendor/openwork fetch origin --prune
+git -C ../worktrees/feat-<name>/vendor/openwork switch -c feat/<name> origin/main
 ```
 
 Then install deps and develop:
 
 ```bash
-pnpm -C ../worktrees/feat-<name>/apps/openwork install
-pnpm -C ../worktrees/feat-<name>/apps/openwork typecheck
+pnpm -C ../worktrees/feat-<name>/vendor/openwork install
+pnpm -C ../worktrees/feat-<name>/vendor/openwork typecheck
 ```
 
 ## Common Checks

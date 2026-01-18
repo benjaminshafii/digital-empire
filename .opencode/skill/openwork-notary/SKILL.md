@@ -50,7 +50,7 @@ security find-generic-password -a key-path  -s com.differentai.openwork.notary -
 
 ```bash
 APPLE_SIGNING_IDENTITY='Developer ID Application: Different AI inc. (F5DJWB4CCV)' \
-  pnpm -C apps/openwork exec tauri build --bundles dmg
+  pnpm -C vendor/openwork exec tauri build --bundles dmg
 ```
 
 ### 2) Submit to Apple notarization (wait)
@@ -62,7 +62,7 @@ bun .opencode/skill/openwork-notary/first-call.ts
 ### 3) Staple and verify
 
 ```bash
-DMG_PATH="apps/openwork/src-tauri/target/release/bundle/dmg/OpenWork_0.1.2_aarch64.dmg"
+DMG_PATH="vendor/openwork/src-tauri/target/release/bundle/dmg/OpenWork_0.1.2_aarch64.dmg"
 
 xcrun stapler staple "$DMG_PATH"
 spctl --assess --type open --verbose=4 "$DMG_PATH"
@@ -83,7 +83,7 @@ Then paste that value into the repo secret `TAURI_SIGNING_PRIVATE_KEY`.
 
 Notes:
 - Do not commit the private key.
-- If you rotate/replace the private key, you must also update the embedded `pubkey` in `apps/openwork/src-tauri/tauri.conf.json` to match.
+- If you rotate/replace the private key, you must also update the embedded `pubkey` in `vendor/openwork/src-tauri/tauri.conf.json` to match.
 
 ## Common gotchas
 

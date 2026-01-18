@@ -45,7 +45,7 @@ This skill encodes the opinionated workflow (submodule PRs + control-center poin
 This repo is the control center.
 
 - Control-center changes (docs, submodule pointers, tooling) go **directly to `master`** and are pushed (no PR).
-- Product changes live in submodules (e.g. `apps/openwork/`, `apps/openwork-landing/`) and ship via **PRs in the submodule repos**, then the control center is updated to point at the merged submodule commits.
+- Product changes live in submodules (e.g. `vendor/openwork/`, `vendor/openwork-landing/`) and ship via **PRs in the submodule repos**, then the control center is updated to point at the merged submodule commits.
 
 ### Standing permissions
 
@@ -66,19 +66,19 @@ This repo is the control center.
    - `git submodule update --init --recursive`
 
 4. Submodule work (example: OpenWork):
-   - `git -C apps/openwork switch -c feat/<name>`
-   - `pnpm -C apps/openwork install`
-   - Make changes + run checks (`pnpm -C apps/openwork typecheck`, plus build/e2e as appropriate).
+   - `git -C vendor/openwork switch -c feat/<name>`
+   - `pnpm -C vendor/openwork install`
+   - Make changes + run checks (`pnpm -C vendor/openwork typecheck`, plus build/e2e as appropriate).
 
 5. Submodule PR + auto-merge:
-   - `git -C apps/openwork add -A && git -C apps/openwork commit -m "..."`
-   - `git -C apps/openwork push -u origin feat/<name>`
+   - `git -C vendor/openwork add -A && git -C vendor/openwork commit -m "..."`
+   - `git -C vendor/openwork push -u origin feat/<name>`
    - `gh pr create --repo different-ai/openwork --base main --head feat/<name>`
    - `gh pr merge --repo different-ai/openwork --auto --squash`
 
 6. After the submodule PR merges: update the control center to the merged commit and push `master`:
-   - `git -C apps/openwork switch main && git -C apps/openwork pull --ff-only`
-   - `git add apps/openwork` (and/or `apps/openwork-landing`)
+   - `git -C vendor/openwork switch main && git -C vendor/openwork pull --ff-only`
+   - `git add vendor/openwork` (and/or `vendor/openwork-landing`)
    - `git commit -m "chore: bump submodule pointers"`
    - `git push origin master`
 
@@ -91,8 +91,8 @@ This repo is the control center.
 
 - `git status`
 - `git submodule status`
-- `git -C apps/openwork status`
-- `git -C apps/openwork-landing status`
+- `git -C vendor/openwork status`
+- `git -C vendor/openwork-landing status`
 
 For deeper repository guidance and skill scaffolds, see `.opencode/agent/draupnir.md`.
 

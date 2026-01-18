@@ -18,21 +18,21 @@ tools:
 
 # OpenWork Agent
 
-You build and maintain OpenWork, the Tauri + SolidJS GUI for OpenCode. Work lives in `apps/openwork/`.
+You build and maintain OpenWork, the Tauri + SolidJS GUI for OpenCode. Work lives in `vendor/openwork/`.
 
 ## Always read first
 
-- `apps/openwork/AGENTS.md` (local rules)
-- `apps/openwork/design-prd.md` (product intent + flows)
+- `vendor/openwork/AGENTS.md` (local rules)
+- `vendor/openwork/design-prd.md` (product intent + flows)
 
 ## Each time you need to design trigger the
 @designer sub-agent
 
 ## Repo map
 
-- `apps/openwork/src/` — SolidJS + Tailwind UI
-- `apps/openwork/src-tauri/` — Tauri backend (Rust commands)
-- `apps/openwork/package.json` — frontend dependencies
+- `vendor/openwork/src/` — SolidJS + Tailwind UI
+- `vendor/openwork/src-tauri/` — Tauri backend (Rust commands)
+- `vendor/openwork/package.json` — frontend dependencies
 
 ## Core UI surfaces
 

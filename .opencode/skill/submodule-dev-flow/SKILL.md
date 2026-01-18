@@ -16,7 +16,7 @@ Enable parallel feature work across multiple submodules without Git submodule ch
 Opinionated defaults:
 
 - Dev happens in **submodule repo worktrees** under `worktrees/` (inside this repo).
-- The pinned submodule checkout under `apps/<name>` is treated as **read-only**.
+- The pinned submodule checkout under `vendor/<name>` is treated as **read-only**.
 - Submodule PRs merge first; then control-center bumps submodule pointers on `master`.
 
 ## Standard Flow (Single Submodule)
@@ -36,10 +36,10 @@ Example: OpenWork.
 mkdir -p worktrees
 
 # Fetch latest refs in the submodule repo.
-git -C apps/openwork fetch origin --prune
+git -C vendor/openwork fetch origin --prune
 
 # Create a dedicated dev checkout under worktrees/.
-git -C apps/openwork worktree add \
+git -C vendor/openwork worktree add \
   -b feat/<name> \
   ../../worktrees/sub-openwork-<name> \
   origin/main
@@ -84,11 +84,11 @@ Merge the PR (squash is fine).
 
 ```bash
 # Update the pinned checkout to the merged tip.
-git -C apps/openwork switch main
-git -C apps/openwork pull --ff-only
+git -C vendor/openwork switch main
+git -C vendor/openwork pull --ff-only
 
 # Record the new gitlink on control-center master.
-git add apps/openwork
+git add vendor/openwork
 git commit -m "chore: bump openwork submodule"
 git push origin master
 ```
