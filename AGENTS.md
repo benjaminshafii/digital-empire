@@ -129,9 +129,8 @@ Reconstructable:
 
 ## Repository Guidance
 
-- Always read `design-prd.md` at session start for product intent and examples.
-- Every package/app must have its own `AGENTS.md` with local rules and workflows.
-- The root `AGENTS.md` documents this structure and is the global baseline; local `AGENTS.md` can extend or override.
+For every vendor read their own AGENTS.md 
+e.g. vendor/openwork/AGENTS.MD
 - `AGENTS.md` files are the canonical source of agent behavior.
 
 ## Skill Template (Self-Building)
