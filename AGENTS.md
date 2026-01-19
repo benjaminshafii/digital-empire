@@ -52,47 +52,10 @@ This repo is the control center.
 - Allowed: create worktrees under `../worktrees/*`.
 - Allowed: install dependencies in submodules (e.g. `pnpm install`).
 - Still ask first: anything destructive (rm/reset), anything outside the repo, anything involving credentials.
-
-### Golden path (OpenWork feature)
-
-1. Sync the control center:
-   - `git fetch origin --prune`
-   - `git pull --ff-only origin master`
-
-2. Create an isolated worktree:
-   - `git worktree add -b feat/<name> ../worktrees/feat-<name> master`
-
-3. Ensure submodules are ready:
-   - `git submodule update --init --recursive`
-
-4. Submodule work (example: OpenWork):
-   - `git -C vendor/openwork switch -c feat/<name>`
-   - `pnpm -C vendor/openwork install`
-   - Make changes + run checks (`pnpm -C vendor/openwork typecheck`, plus build/e2e as appropriate).
-
-5. Submodule PR + auto-merge:
-   - `git -C vendor/openwork add -A && git -C vendor/openwork commit -m "..."`
-   - `git -C vendor/openwork push -u origin feat/<name>`
-   - `gh pr create --repo different-ai/openwork --base main --head feat/<name>`
-   - `gh pr merge --repo different-ai/openwork --auto --squash`
-
-6. After the submodule PR merges: update the control center to the merged commit and push `master`:
-   - `git -C vendor/openwork switch main && git -C vendor/openwork pull --ff-only`
-   - `git add vendor/openwork` (and/or `vendor/openwork-landing`)
-   - `git commit -m "chore: bump submodule pointers"`
-   - `git push origin master`
-
 ### Permissions & isolation notes
 
 - Run all commands from the feature worktree (set shell `workdir` / OpenCode `--cwd` to the worktree path) so permissions stay scoped to that directory.
 - Avoid multiple active worktrees that touch the same submodule at once; submodule git dirs are shared. Finish one feature before starting another.
-
-### Cleanliness checks
-
-- `git status`
-- `git submodule status`
-- `git -C vendor/openwork status`
-- `git -C vendor/openwork-landing status`
 
 For deeper repository guidance and skill scaffolds, see `.opencode/agent/draupnir.md`.
 
