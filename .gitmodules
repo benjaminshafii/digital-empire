@@ -10,3 +10,6 @@
 [submodule "vendor/openwork-landing"]
 	path = vendor/openwork-landing
 	url = https://github.com/different-ai/openwork-landing.git
+[submodule "vendor/opencode"]
+	path = vendor/opencode
+	url = https://github.com/anomalyco/opencode.git
