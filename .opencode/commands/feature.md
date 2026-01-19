@@ -1,8 +1,5 @@
 ---
 description: Create a feature branch, execute instructions, open PR, and monitor CI
-agent: draupnir
-subtask: true
-model: gpt-5.2-codex
 ---
 You are running in the digital-empire control center. Execute this end-to-end feature flow for the user instructions below.
 
