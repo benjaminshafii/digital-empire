@@ -51,3 +51,6 @@ outputs/
 
 # OpenCode mirror
 /vendor/opencode
+
+# Research notes
+/research/
