@@ -7,11 +7,11 @@ User instructions:
 $ARGUMENTS
 
 Requirements:
-1) Create a woktree in ./wortrees starting from origin/dev (or origin/main if dev notpresent) (that is your starting point this assure we always start from remote origin)
+1) Create a worktree in ./worktrees starting from origin/dev (or origin/main if dev not present). This is your starting point and ensures we always start from the remote origin.
 2) Installs deps & Run all work in the new worktree (never in the main repo directory).
 3) Execute the user instructions exactly.
 4) Create a PR when work is ready and tests pass.
-5) Watch GitHub Actions checks for the PR. If all required checks pass, merge the PR.(asure your tool calls wait approriate amount of thime for these actions)
+5) Watch GitHub Actions checks for the PR. If all required checks pass, merge the PR into dev. (ensure your tool calls wait an appropriate amount of time for these actions)
 6) If any check fails, report the failure and ask the user before retrying.
 
 Output:
