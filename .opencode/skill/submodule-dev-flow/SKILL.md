@@ -42,7 +42,7 @@ git -C vendor/openwork fetch origin --prune
 git -C vendor/openwork worktree add \
   -b feat/<name> \
   ../../worktrees/sub-openwork-<name> \
-  origin/main
+  origin/dev
 ```
 
 ### 3) Install dependencies and run checks

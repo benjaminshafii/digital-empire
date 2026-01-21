@@ -68,7 +68,7 @@ Inside the new worktree:
 
 ```bash
 git -C ../worktrees/feat-<name>/vendor/openwork fetch origin --prune
-git -C ../worktrees/feat-<name>/vendor/openwork switch -c feat/<name> origin/main
+git -C ../worktrees/feat-<name>/vendor/openwork switch -c feat/<name> origin/dev
 ```
 
 Then install deps and develop:

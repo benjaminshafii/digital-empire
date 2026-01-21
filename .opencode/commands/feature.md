@@ -11,8 +11,10 @@ Requirements:
 2) Installs deps & Run all work in the new worktree (never in the main repo directory).
 3) Execute the user instructions exactly.
 4) Create a PR when work is ready and tests pass.
-5) Watch GitHub Actions checks for the PR. If all required checks pass, merge the PR into dev. (ensure your tool calls wait an appropriate amount of time for these actions)
-6) If any check fails, report the failure and ask the user before retrying.
+5) Watch GitHub Actions checks for the PR. If all required checks pass (ensure your tool calls wait an appropriate amount of time for these actions)
+6) If any check fails, attempt to fix them by adding new commits to the PR.
+7) rearead everything at the end aand think about ways to simplify commit and push
+8) If any check fails, attempt to fix them by adding new commits to the PR.
 
 Output:
 - Provide a short status log of each step (sync, worktree, implementation, tests, PR, checks, merge).

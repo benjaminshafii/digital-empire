@@ -23,7 +23,7 @@ This file is loaded at session start to keep the repo’s mission, principles, a
 
 ## Repository Governance
 
-- Always read `design-prd.md` for product intent and examples.
+- Always read `MOTIVATIONS-PHILOSOPHY.md` for product intent and examples.
 - Every package/app has its own `AGENTS.md` with local rules.
 - Root `AGENTS.md` defines global guidance.
 - Maintain a gitignored OpenCode mirror of the repo for self-inspection.

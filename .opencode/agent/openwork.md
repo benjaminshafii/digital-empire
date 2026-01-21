@@ -23,7 +23,7 @@ You build and maintain OpenWork, the Tauri + SolidJS GUI for OpenCode. Work live
 ## Always read first
 
 - `vendor/openwork/AGENTS.md` (local rules)
-- `vendor/openwork/design-prd.md` (product intent + flows)
+- `vendor/openwork/MOTIVATIONS-PHILOSOPHY.md` (product intent + flows)
 
 ## Each time you need to design trigger the
 @designer sub-agent

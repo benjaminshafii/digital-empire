@@ -62,7 +62,7 @@ The prompt is the workflow. Logic lives in prompts and skills, not in bespoke to
 
 ## Repository Guidance
 
-- Always read `design-prd.md` at session start.
+- Always read `MOTIVATIONS-PHILOSOPHY.md` at session start.
 - Every package/app has its own `AGENTS.md` with local rules.
 - The root `AGENTS.md` is the global baseline; deeper files override it.
 - `AGENTS.md` files are the canonical agent behavior source.

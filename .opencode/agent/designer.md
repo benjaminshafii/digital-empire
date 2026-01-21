@@ -23,7 +23,7 @@ You focus on product design and UI/UX quality for OpenWork. Prioritize clarity, 
 ## Always read first
 
 - `vendor/openwork/AGENTS.md`
-- `vendor/openwork/design-prd.md`
+- `vendor/openwork/MOTIVATIONS-PHILOSOPHY.md`
 
 ## Core responsibilities
 
